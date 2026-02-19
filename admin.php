@@ -3,15 +3,11 @@
 $baseDir = __DIR__ . '/images';
 $thumbBaseDir = __DIR__ . '/thumbnails';
 
-if (!is_dir($thumbBaseDir)) {
-    mkdir($thumbBaseDir, 0755, true);
-}
-
 function sanitize($str) {
     return htmlspecialchars($str ?? '', ENT_QUOTES);
 }
 
-function createThumbnail($sourcePath, $thumbPath, $maxWidth = 400) {
+function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
 
     if (!extension_loaded('gd')) return false;
 
@@ -29,7 +25,6 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 400) {
 
     $thumb = imagecreatetruecolor($newWidth, $newHeight);
     imagecopyresampled($thumb, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-
     imagejpeg($thumb, $thumbPath, 80);
 
     imagedestroy($src);
@@ -38,139 +33,214 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 400) {
     return true;
 }
 
-/* SALVATAGGIO */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$folders = array_filter(glob($baseDir . '/*'), 'is_dir');
+$currentFolder = $_GET['folder'] ?? null;
 
-    $folder = basename($_POST['folder']);
-    $folderPath = $baseDir . '/' . $folder;
+/* ===================================================== */
+/* LISTA CARTELLE */
+/* ===================================================== */
+if (!$currentFolder) {
+?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin 360</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { background:#111; color:#fff; }
+.card { background:#1a1a1a; border:1px solid #333; }
+.card img { object-fit:cover; height:180px; }
+</style>
+</head>
+<body class="container py-4">
 
-    if (is_dir($folderPath)) {
+<h1 class="mb-4">Gestione Cartelle 360</h1>
 
-        $meta = [
-            "folder_comment" => $_POST['folder_comment'] ?? '',
-            "images" => []
-        ];
+<div class="row g-4">
 
-        if (!empty($_POST['images'])) {
-            foreach ($_POST['images'] as $file => $desc) {
-                $meta["images"][basename($file)] = $desc;
+<?php foreach ($folders as $folder):
+
+    $name = basename($folder);
+    $images = glob($folder . '/*.jpg');
+    $count = count($images);
+
+    $metaFile = $folder . '/meta.json';
+    $hasMeta = file_exists($metaFile);
+
+    $folderComment = '';
+    $hasDescriptions = false;
+
+    if ($hasMeta) {
+        $raw = file_get_contents($metaFile);
+        $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+        $decoded = json_decode($raw, true);
+
+        if (is_array($decoded)) {
+            $folderComment = $decoded['folder_comment'] ?? '';
+            if (!empty($folderComment)) {
+                $hasDescriptions = true;
             }
         }
+    }
 
-        file_put_contents(
-            $folderPath . '/meta.json',
-            json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        );
+    $preview = null;
+    if ($count > 0) {
+        $preview = 'images/' . $name . '/' . basename($images[0]);
+    }
+?>
+
+<div class="col-md-4">
+    <div class="card text-white h-100">
+
+        <?php if ($preview): ?>
+            <img src="<?= $preview ?>" class="card-img-top">
+        <?php endif; ?>
+
+        <div class="card-body d-flex flex-column">
+
+            <h5 class="card-title"><?= sanitize($name) ?></h5>
+
+            <?php if (!$hasMeta): ?>
+                <span class="badge bg-danger mb-2">
+                    Nessun meta.json
+                </span>
+
+            <?php elseif (!$hasDescriptions): ?>
+                <span class="badge bg-warning text-dark mb-2">
+                    Meta vuoto
+                </span>
+
+            <?php else: ?>
+                <p class="card-text text-secondary small">
+                    <?= sanitize($folderComment) ?>
+                </p>
+            <?php endif; ?>
+
+            <p class="card-text small"><?= $count ?> foto</p>
+
+            <div class="mt-auto">
+
+                <a href="?folder=<?= urlencode($name) ?>"
+                   class="btn btn-sm <?= $hasMeta ? 'btn-outline-light' : 'btn-warning text-dark' ?>">
+                    <?= $hasMeta ? '✏ Modifica' : '➕ Crea descrizioni' ?>
+                </a>
+
+                <a href="index.php?open=<?= urlencode($name) ?>"
+                   target="_blank"
+                   class="btn btn-sm btn-outline-secondary ms-2">
+                    👁 Apri viewer
+                </a>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<?php endforeach; ?>
+
+</div>
+</body>
+</html>
+<?php
+exit;
+}
+
+/* ===================================================== */
+/* GESTIONE SINGOLA CARTELLA */
+/* ===================================================== */
+
+$folderName = basename($currentFolder);
+$folderPath = $baseDir . '/' . $folderName;
+
+if (!is_dir($folderPath)) {
+    die("Cartella non valida");
+}
+
+$images = glob($folderPath . '/*.jpg');
+$metaFile = $folderPath . '/meta.json';
+
+$meta = [
+    'folder_comment' => '',
+    'images' => []
+];
+
+if (file_exists($metaFile)) {
+    $raw = file_get_contents($metaFile);
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        $meta = array_merge($meta, $decoded);
     }
 }
 
-$folders = array_filter(glob($baseDir . '/*'), 'is_dir');
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $meta['folder_comment'] = $_POST['folder_comment'] ?? '';
+
+    foreach ($images as $img) {
+        $filename = basename($img);
+        $meta['images'][$filename] = $_POST['images'][$filename] ?? '';
+    }
+
+    file_put_contents(
+        $metaFile,
+        json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+    );
+
+    header("Location: ?folder=" . urlencode($folderName));
+    exit;
+}
+
+$thumbFolder = $thumbBaseDir . '/' . $folderName;
+if (!is_dir($thumbFolder)) mkdir($thumbFolder, 0755, true);
+
 ?>
 <!DOCTYPE html>
-<html lang="it">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Meta 360</title>
+<title>Admin 360 - <?= sanitize($folderName) ?></title>
 <style>
 body { font-family: Arial; background:#111; color:#fff; padding:20px; }
-h2 { margin-top:40px; }
-
-textarea, input[type=text] {
-    width:100%;
-    padding:6px;
-    margin:5px 0 15px 0;
-    background:#222;
-    border:1px solid #444;
-    color:#fff;
-}
-
-button {
-    padding:8px 20px;
-    background:#444;
-    color:#fff;
-    border:none;
-    cursor:pointer;
-}
-button:hover { background:#666; }
-
-.image-row {
-    display:flex;
-    gap:15px;
-    align-items:flex-start;
-    background:#1a1a1a;
-    padding:10px;
-    margin-bottom:10px;
-}
-
-.image-row img {
-    width:200px;
-    border-radius:6px;
-}
-
-.image-info {
-    flex:1;
-}
+input, textarea { width:100%; padding:8px; background:#222; border:1px solid #444; color:#fff; }
+button { padding:10px 20px; background:#444; color:#fff; border:none; cursor:pointer; margin-top:20px; }
+.image-row { display:flex; flex-direction:column; gap:10px; margin-bottom:30px; background:#1a1a1a; padding:15px; border-radius:8px; }
+.image-row img { width:600px; max-width:100%; border-radius:6px; }
+.image-info { width:100%; }
+a { color:#0af; text-decoration:none; }
+a:hover { text-decoration:underline; }
 </style>
 </head>
 <body>
 
-<h1>Gestione meta.json</h1>
+<a href="admin.php">← Torna alla lista</a>
 
-<?php foreach ($folders as $folder): ?>
-<?php
-    $folderName = basename($folder);
-    $images = glob($folder . '/*.jpg');
-
-    $metaFile = $folder . '/meta.json';
-
-    if (!file_exists($metaFile)) {
-        $initialMeta = [
-            "folder_comment" => "",
-            "images" => []
-        ];
-        foreach ($images as $img) {
-            $initialMeta["images"][basename($img)] = "";
-        }
-        file_put_contents(
-            $metaFile,
-            json_encode($initialMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-        );
-    }
-
-    $meta = json_decode(file_get_contents($metaFile), true);
-
-    $thumbFolder = $thumbBaseDir . '/' . $folderName;
-    if (!is_dir($thumbFolder)) {
-        mkdir($thumbFolder, 0755, true);
-    }
-?>
-
-<h2><?= sanitize($folderName) ?></h2>
+<h1><?= sanitize($folderName) ?></h1>
 
 <form method="post">
-<input type="hidden" name="folder" value="<?= sanitize($folderName) ?>">
 
-<label>Commento cartella:</label>
-<textarea name="folder_comment" rows="2"><?= sanitize($meta['folder_comment']) ?></textarea>
+<h3>Commento cartella</h3>
+<textarea name="folder_comment" rows="3"><?= sanitize($meta['folder_comment']) ?></textarea>
+
+<h3>Immagini</h3>
 
 <?php foreach ($images as $img):
 
     $filename = basename($img);
-    $desc = $meta['images'][$filename] ?? '';
-
     $thumbPath = $thumbFolder . '/' . $filename;
-    $relativeThumbPath = 'thumbnails/' . $folderName . '/' . $filename;
+    $relativeThumb = 'thumbnails/' . $folderName . '/' . $filename;
 
     if (!file_exists($thumbPath) || filemtime($img) > filemtime($thumbPath)) {
-        createThumbnail($img, $thumbPath, 400);
+        createThumbnail($img, $thumbPath, 800);
     }
+
+    $desc = $meta['images'][$filename] ?? '';
 ?>
 
 <div class="image-row">
-
-    <img src="<?= $relativeThumbPath ?>">
-
+    <img src="<?= $relativeThumb ?>">
     <div class="image-info">
         <strong><?= sanitize($filename) ?></strong>
         <input type="text"
@@ -178,15 +248,12 @@ button:hover { background:#666; }
                value="<?= sanitize($desc) ?>"
                placeholder="Descrizione immagine">
     </div>
-
 </div>
 
 <?php endforeach; ?>
 
 <button type="submit">Salva</button>
+
 </form>
-
-<?php endforeach; ?>
-
 </body>
 </html>
