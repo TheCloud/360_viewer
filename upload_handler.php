@@ -71,58 +71,44 @@ $thumbFolder = $thumbBaseDir . '/' . $folderName;
 if (!is_dir($folderPath)) mkdir($folderPath, 0755, true);
 if (!is_dir($thumbFolder)) mkdir($thumbFolder, 0755, true);
 
-if (empty($_FILES['images'])) {
+if (empty($_FILES['image'])) {
     http_response_code(400);
-    echo "Nessun file ricevuto (possibile superamento post_max_size)";
+    echo "Nessun file ricevuto";
     exit;
 }
 
-$MAX_TOTAL_BYTES = getPhpUploadLimitBytes();
-
-$totalBytes = 0;
-foreach ($_FILES['images']['size'] as $size) {
-    $totalBytes += (int)$size;
-}
-
-if ($totalBytes > $MAX_TOTAL_BYTES) {
-    http_response_code(413);
-    echo "Dimensione totale troppo grande";
+if ($_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+    http_response_code(400);
+    echo "Errore upload file";
     exit;
 }
 
-foreach ($_FILES['images']['tmp_name'] as $key => $tmpName) {
+$originalName = basename($_FILES['image']['name']);
 
-    if ($_FILES['images']['error'][$key] !== UPLOAD_ERR_OK) {
-        continue;
-    }
+$finfo = finfo_open(FILEINFO_MIME_TYPE);
+$mime = finfo_file($finfo, $_FILES['image']['tmp_name']);
+finfo_close($finfo);
 
-    $originalName = basename($_FILES['images']['name'][$key]);
+if ($mime !== 'image/jpeg') {
+    http_response_code(400);
+    echo "File non valido";
+    exit;
+}
 
-    if (!preg_match('/\.(jpg|jpeg)$/i', $originalName)) {
-        continue;
-    }
+$targetPath = $folderPath . '/' . $originalName;
 
+if (file_exists($targetPath)) {
+    $originalName = time() . '_' . $originalName;
     $targetPath = $folderPath . '/' . $originalName;
-
-    if (!move_uploaded_file($tmpName, $targetPath)) {
-        continue;
-    }
-
-    $thumbPath = $thumbFolder . '/' . $originalName;
-    createThumbnail($targetPath, $thumbPath, 800);
 }
 
-// crea meta.json se non esiste
-$metaFile = $folderPath . '/meta.json';
-if (!file_exists($metaFile)) {
-    $meta = [
-        'folder_comment' => '',
-        'images' => []
-    ];
-    file_put_contents(
-        $metaFile,
-        json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
+if (!move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)) {
+    http_response_code(500);
+    echo "Errore salvataggio";
+    exit;
 }
+
+$thumbPath = $thumbFolder . '/' . $originalName;
+createThumbnail($targetPath, $thumbPath, 800);
 
 echo "OK";

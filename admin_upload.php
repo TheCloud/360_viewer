@@ -19,7 +19,7 @@ $memoryMax = ini_get('memory_limit');
 
 $effectiveBytes = min(toBytes($uploadMax), toBytes($postMax));
 $effectiveMB = round($effectiveBytes / 1024 / 1024, 1);
-
+$prefillFolder = $_GET['folder'] ?? '';
 ?>
 <!DOCTYPE html>
 <html>
@@ -87,7 +87,7 @@ const PHP_MAX_UPLOAD = <?= $maxUploadBytes ?>;
 </div>
 <div class="mb-3">
 <label>Nome cartella (es: 2026-02-20)</label>
-<input type="text" id="folderName" class="form-control" placeholder="<?=date("Y-m-d");?>">
+<input type="text" id="folderName" class="form-control" placeholder="<?=date("Y-m-d");?>" value="<?= htmlspecialchars($prefillFolder) ?>">
 </div>
 
 <div id="dropZone" class="drop-zone">
@@ -129,7 +129,7 @@ fileInput.addEventListener('change', () => {
     uploadFiles(fileInput.files);
 });
 
-function uploadFiles(files) {
+async function uploadFiles(files) {
 
     const folderName = document.getElementById('folderName').value.trim();
     if (!folderName) {
@@ -137,51 +137,31 @@ function uploadFiles(files) {
         return;
     }
 
-    // CONTROLLO DIMENSIONE TOTALE
-    const MAX_TOTAL_MB = 100;
-    let totalBytes = 0;
+    progressWrapper.classList.remove('d-none');
 
     for (let i = 0; i < files.length; i++) {
-        totalBytes += files[i].size;
-    }
 
-if (totalBytes > PHP_MAX_UPLOAD) {
+        const formData = new FormData();
+        formData.append('folder', folderName);
+        formData.append('image', files[i]);
 
-    const maxMB = (PHP_MAX_UPLOAD / (1024*1024)).toFixed(1);
+const response = await fetch('upload_handler.php', {
+    method: 'POST',
+    body: formData
+});
 
-    alert("Limite massimo consentito: " + maxMB + " MB");
+if (!response.ok) {
+    const text = await response.text();
+    result.innerHTML = '<div class="alert alert-danger">Errore: ' + text + '</div>';
     return;
 }
-    const formData = new FormData();
-    formData.append('folder', folderName);
 
-    for (let i = 0; i < files.length; i++) {
-        formData.append('images[]', files[i]);
+        const percent = Math.round(((i + 1) / files.length) * 100);
+        progressBar.style.width = percent + '%';
+        progressBar.innerText = percent + '%';
     }
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'upload_handler.php', true);
-
-    xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 100);
-            progressWrapper.classList.remove('d-none');
-            progressBar.style.width = percent + '%';
-            progressBar.innerText = percent + '%';
-        }
-    };
-
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            result.innerHTML = '<div class="alert alert-success">Upload completato</div>';
-            progressBar.style.width = '0%';
-            progressBar.innerText = '0%';
-        } else {
-            result.innerHTML = '<div class="alert alert-danger">Errore upload (' + xhr.status + ')</div>';
-        }
-    };
-
-    xhr.send(formData);
+    result.innerHTML = '<div class="alert alert-success">Upload completato</div>';
 }
 </script>
 

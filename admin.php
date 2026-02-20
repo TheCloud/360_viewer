@@ -142,6 +142,11 @@ body { background:#111; color:#fff; }
                    class="btn btn-sm <?= $hasMeta ? 'btn-outline-light' : 'btn-warning text-dark' ?>">
                     <?= $hasMeta ? '✏ Modifica' : '➕ Crea descrizioni' ?>
                 </a>
+
+<a href="admin_upload.php?folder=<?= urlencode($name) ?>"
+   class="btn btn-sm btn-outline-success ms-2">
+   ➕ Aggiungi foto
+</a>
 <?php
 $token = generateToken($name);
 $publicUrl = "https://" . $_SERVER['HTTP_HOST']
