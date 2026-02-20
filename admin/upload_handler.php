@@ -1,7 +1,7 @@
 <?php
 
-$baseDir = __DIR__ . '/images';
-$thumbBaseDir = __DIR__ . '/thumbnails';
+$baseDir = dirname(__DIR__) . '/images';
+$thumbBaseDir = dirname(__DIR__) . '/thumbnails';
 
 function sanitize($str) {
     return preg_replace('/[^a-zA-Z0-9-_]/', '', $str);

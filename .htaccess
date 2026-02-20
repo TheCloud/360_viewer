@@ -1,0 +1,6 @@
+<FilesMatch "admin.*\.php|upload_handler\.php">
+    AuthType Basic
+    AuthName "Area Riservata 360"
+    AuthUserFile /kunden/homepages/9/d611919376/htdocs/linkas-it/wp/360/.htpasswd
+    Require valid-user
+</FilesMatch>

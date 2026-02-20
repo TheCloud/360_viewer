@@ -1,34 +1,47 @@
 <?php
 
+define('SECRET_KEY', 'LA_STESSA_IDENTICA_STRINGA_DI_INDEX');
 
-// ------------------------------
-// PARAMETRI
-// ------------------------------
-$openFolder = $_GET['open'] ?? null;
-$openImage  = $_GET['img']  ?? null;
-$token      = $_GET['token'] ?? null;
-
-$yawParam   = $_GET['yaw']   ?? null;
-$pitchParam = $_GET['pitch'] ?? null;
-$hfovParam  = $_GET['hfov']  ?? null;
-
-$baseDir = __DIR__ . '/images';
-$thumbBaseDir = __DIR__ . '/thumbnails';
-
-if (!is_dir($thumbBaseDir)) {
-    mkdir($thumbBaseDir, 0755, true);
+function generateToken($folder) {
+    return hash_hmac('sha256', $folder, SECRET_KEY);
 }
 
-// Cartella e file
-$openFolder = $_GET['open'] ?? null;
-$openImage = $_GET['img'] ?? null;
+function isValidToken($folder, $token) {
+    return hash_equals(generateToken($folder), $token ?? '');
+}
 
-// Stato immagine
-$yawParam   = $_GET['yaw']   ?? null;
+$baseDir      = __DIR__ . '/images';
+$thumbBaseDir = __DIR__ . '/thumbnails';
+
+$openFolder = $_GET['open'] ?? null;
+$openImage  = $_GET['img'] ?? null;
+$token      = $_GET['token'] ?? null;
+
+$yawParam   = $_GET['yaw'] ?? null;
 $pitchParam = $_GET['pitch'] ?? null;
-$hfovParam  = $_GET['hfov']  ?? null;
+$hfovParam  = $_GET['hfov'] ?? null;
+
+/* =========================
+   ACCESSO SOLO CON TOKEN
+========================= */
+
+if (!$openFolder || !isValidToken($openFolder, $token)) {
+    http_response_code(403);
+    die("Accesso non autorizzato");
+}
+
+$folderPath = $baseDir . '/' . basename($openFolder);
+
+if (!is_dir($folderPath)) {
+    die("Cartella non valida");
+}
+
+/* =========================
+   THUMBNAIL
+========================= */
 
 function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
+
     if (!extension_loaded('gd')) return false;
 
     $info = getimagesize($sourcePath);
@@ -36,8 +49,8 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
 
     list($width, $height) = $info;
 
-    $ratio = $height / $width;
-    $newWidth = $maxWidth;
+    $ratio     = $height / $width;
+    $newWidth  = $maxWidth;
     $newHeight = $maxWidth * $ratio;
 
     $src = imagecreatefromjpeg($sourcePath);
@@ -49,26 +62,69 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
 
     imagedestroy($src);
     imagedestroy($thumb);
+
     return true;
 }
 
-$folders = array_filter(glob($baseDir . '/*'), 'is_dir');
+$images = glob($folderPath . '/*.jpg');
+
+$meta = [
+    'folder_comment' => '',
+    'images'   => [],
+    'hotspots' => []
+];
+
+$metaFile = $folderPath . '/meta.json';
+
+if (file_exists($metaFile)) {
+    $decoded = json_decode(file_get_contents($metaFile), true);
+    if (is_array($decoded)) {
+        $meta = array_merge($meta, $decoded);
+    }
+}
+
+$thumbFolder = $thumbBaseDir . '/' . $openFolder;
+if (!is_dir($thumbFolder)) {
+    mkdir($thumbFolder, 0755, true);
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>360 Viewer</title>
+<title>Foto 360</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
 <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
 
 <style>
 body { background:#111; color:#fff; }
+
+.custom-hotspot {
+    width:18px;
+    height:18px;
+    background:#ff3b3b;
+    border-radius:50%;
+    border:2px solid #fff;
+    box-shadow:0 0 8px rgba(255,0,0,0.7);
+}
+
+.custom-hotspot::after {
+    content:'';
+    position:absolute;
+    inset:-6px;
+    border-radius:50%;
+    border:2px solid rgba(255,0,0,0.6);
+    animation:pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform:scale(0.6); opacity:1; }
+    100% { transform:scale(1.6); opacity:0; }
+}
 .thumb {
     width:300px;
     height:150px;
@@ -77,19 +133,9 @@ body { background:#111; color:#fff; }
     border-radius:6px;
     border:2px solid #333;
     cursor:pointer;
-    position:relative;
 }
 .thumb:hover { border-color:#fff; }
-.thumb-caption {
-    position:absolute;
-    bottom:0;
-    left:0;
-    right:0;
-    background:rgba(0,0,0,0.6);
-    font-size:12px;
-    padding:4px;
-    text-align:center;
-}
+
 #viewerOverlay {
     position:fixed;
     inset:0;
@@ -97,15 +143,28 @@ body { background:#111; color:#fff; }
     display:none;
     z-index:9999;
 }
-#panorama { width:100%; height:100%; }
+
+#panorama {
+    position:absolute;
+    inset:0;
+}
+
 .closeBtn {
     position:absolute;
     top:20px;
     right:30px;
     font-size:28px;
     cursor:pointer;
-    z-index:10000;
+    z-index:10001;
 }
+
+#shareViewBtn {
+    position:absolute;
+    top:20px;
+    left:30px;
+    z-index:10001;
+}
+
 .viewer-caption {
     position:absolute;
     bottom:30px;
@@ -114,124 +173,52 @@ body { background:#111; color:#fff; }
     background:rgba(0,0,0,0.6);
     padding:10px 20px;
     border-radius:6px;
-    max-width:80%;
-    text-align:center;
 }
 </style>
 </head>
 <body>
 
 <div class="container py-4">
-<h1 class="mb-4">Foto Julien 360°</h1>
-
-<div class="accordion" id="accordion360">
-
-<?php foreach ($folders as $folder): 
-
-    $folderName = basename($folder);
-    $images = glob($folder . '/*.jpg');
-
-    // ORDINE PER EXIF
-    usort($images, function($a, $b) {
-        if (function_exists('exif_read_data')) {
-            $exifA = @exif_read_data($a);
-            $exifB = @exif_read_data($b);
-            $dateA = $exifA['DateTimeOriginal'] ?? null;
-            $dateB = $exifB['DateTimeOriginal'] ?? null;
-            if ($dateA && $dateB) {
-                return strtotime($dateA) <=> strtotime($dateB);
-            }
-        }
-        return filemtime($a) <=> filemtime($b);
-    });
-
-$meta = [
-    'folder_comment' => '',
-    'images' => []
-];
-
-$folderComment = '';
-
-$metaFile = $folder . '/meta.json';
-if (file_exists($metaFile)) {
-    $json = file_get_contents($metaFile);
-    $decoded = json_decode($json, true);
-    if (is_array($decoded)) {
-        $meta = array_merge($meta, $decoded);
-	$folderComment = $meta['folder_comment'] ?? '';
-
-    }
-}
-    $thumbFolder = $thumbBaseDir . '/' . $folderName;
-    if (!is_dir($thumbFolder)) mkdir($thumbFolder, 0755, true);
-    $isOpen = ($openFolder === $folderName);
-?>
-<script>
-window.metaData = window.metaData || {};
-window.metaData["<?= $folderName ?>"] = <?= json_encode($meta) ?>;
-</script>
-<div class="accordion-item bg-dark text-white border-secondary">
-<h2 class="accordion-header">
-<div class="d-flex justify-content-between align-items-center w-100">
-
-    <button class="accordion-button bg-dark text-white <?= $isOpen ? '' : 'collapsed' ?>"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#collapse<?= $folderName ?>">
-        <?= htmlspecialchars($folderName) ?>: <?= htmlspecialchars($folderComment) ?>
-    </button>
-
-    <button class="btn btn-sm btn-outline-light ms-2"
-            onclick="shareFolder(event, '<?= $folderName ?>')">
-        🔗 Share
-    </button>
-
-</div></h2>
-
-<div id="collapse<?= $folderName ?>"
-     class="accordion-collapse collapse <?= $isOpen ? 'show' : '' ?>"
-     data-bs-parent="#accordion360">
-
-<div class="accordion-body bg-dark text-white">
-
-<?php if ($folderComment): ?>
-<p class="text-secondary"><?= htmlspecialchars($folderComment) ?></p>
-<?php endif; ?>
+<h1 class="mb-4">
+<?= htmlspecialchars($meta['folder_comment'] ?: $openFolder) ?>
+</h1>
 
 <div class="d-flex flex-wrap gap-3">
 
 <?php foreach ($images as $img):
 
     $filename = basename($img);
-    $relativeImage = 'images/' . $folderName . '/' . $filename;
 
-    $thumbPath = $thumbFolder . '/' . $filename;
-    $relativeThumb = 'thumbnails/' . $folderName . '/' . $filename;
+    $relativeImage = 'images/' . $openFolder . '/' . $filename;
+
+    $thumbPath     = $thumbFolder . '/' . $filename;
+    $relativeThumb = 'thumbnails/' . $openFolder . '/' . $filename;
 
     if (!file_exists($thumbPath) || filemtime($img) > filemtime($thumbPath)) {
-        createThumbnail($img, $thumbPath, 800);
+        createThumbnail($img, $thumbPath);
     }
 
     $description = $meta['images'][$filename] ?? '';
 ?>
 
-<div class="thumb"
-     style="background-image:url('<?= $relativeThumb ?>')"
-     onclick="openViewer('<?= $relativeImage ?>','<?= htmlspecialchars($description, ENT_QUOTES) ?>')">
+<div style="width:300px;">
 
-<?php if ($description): ?>
-<div class="thumb-caption"><?= htmlspecialchars($description) ?></div>
-<?php endif; ?>
+    <div class="thumb"
+         style="background-image:url('<?= $relativeThumb ?>')"
+         onclick="openViewer(
+             '<?= $relativeImage ?>',
+             '<?= htmlspecialchars($description, ENT_QUOTES) ?>',
+             '<?= $filename ?>'
+         )">
+    </div>
+
+    <?php if (!empty($description)): ?>
+        <div class="text-center mt-2 small text-light">
+            <?= htmlspecialchars($description) ?>
+        </div>
+    <?php endif; ?>
 
 </div>
-
-<?php endforeach; ?>
-
-</div>
-</div>
-</div>
-</div>
-
 <?php endforeach; ?>
 
 </div>
@@ -239,9 +226,7 @@ window.metaData["<?= $folderName ?>"] = <?= json_encode($meta) ?>;
 
 <div id="viewerOverlay">
 <div class="closeBtn text-white" onclick="closeViewer()">✕</div>
-<button id="shareViewBtn"
-        class="btn btn-sm btn-outline-light"
-        style="position:absolute; top:20px; left:30px; z-index:10000;">
+<button id="shareViewBtn" class="btn btn-sm btn-outline-light">
     🔗 Condividi vista
 </button>
 <div id="panorama"></div>
@@ -249,95 +234,69 @@ window.metaData["<?= $folderName ?>"] = <?= json_encode($meta) ?>;
 </div>
 
 <script>
-let viewer;
 
-function openViewer(imagePath, description) {
+let viewer = null;
+let currentImageName = null;
+
+let autoOpenFolder = <?= json_encode($openFolder) ?>;
+let autoOpenImage  = <?= json_encode($openImage) ?>;
+let autoToken      = <?= json_encode($token) ?>;
+
+let autoYaw   = <?= json_encode($yawParam) ?>;
+let autoPitch = <?= json_encode($pitchParam) ?>;
+let autoHfov  = <?= json_encode($hfovParam) ?>;
+
+let imageHotspotsData = <?= json_encode($meta['hotspots'] ?? []) ?>;
+
+function openViewer(imagePath, description, fileName) {
+
+    currentImageName = fileName;
 
     document.getElementById('viewerOverlay').style.display = 'block';
-    if (viewer) viewer.destroy();
 
-    const parts = imagePath.split('/');
-    const folderName = parts[1];
-    const fileName   = parts[2];
-
-    let config = {
-        type: 'equirectangular',
-        panorama: imagePath,
-        autoLoad: true,
-        showControls: true,
-        minHfov: 40,
-        maxHfov: 120
-    };
-
-// HOTSPOT
-if (window.metaData &&
-    window.metaData[folderName] &&
-    window.metaData[folderName].hotspots &&
-    window.metaData[folderName].hotspots[fileName]) {
-
-    config.hotSpots = window.metaData[folderName].hotspots[fileName].map(h => ({
-        pitch: h.pitch,
-        yaw: h.yaw,
-        type: "info",
-        text: h.text
-    }));
-}
-
-    let yaw   = parseFloat(autoYaw);
-    let pitch = parseFloat(autoPitch);
-    let hfov  = parseFloat(autoHfov);
-
-    if (!isNaN(yaw))   config.yaw   = yaw;
-    if (!isNaN(pitch)) config.pitch = pitch;
-
-    if (!isNaN(hfov)) {
-        hfov = Math.max(40, Math.min(120, hfov));
-        config.hfov = hfov;
+    if (viewer) {
+        viewer.destroy();
+        viewer = null;
     }
 
+let config = {
+    type: 'equirectangular',
+    panorama: imagePath,
+    autoLoad: true,
+    showControls: true,
+    hotSpots: (imageHotspotsData?.[fileName] || []).map(h => ({
+        pitch: parseFloat(h.pitch),
+        yaw: parseFloat(h.yaw),
+        text: h.text || '',
+        type: 'info',
+        cssClass: 'custom-hotspot'
+    }))
+};
+
+    if (autoYaw)   config.yaw   = parseFloat(autoYaw);
+    if (autoPitch) config.pitch = parseFloat(autoPitch);
+    if (autoHfov)  config.hfov  = parseFloat(autoHfov);
+
     viewer = pannellum.viewer('panorama', config);
-viewer.on('load', function() {
+viewer.on('load', function () {
 
-    // Se non c'è yaw nell'URL
-    if ((!autoYaw || autoYaw === "") && config.hotSpots && config.hotSpots.length > 0) {
+    const hs = imageHotspotsData?.[fileName] || [];
 
-        const first = config.hotSpots[0];
+    if (hs.length > 0) {
 
-viewer.lookAt(
-    first.pitch,
-    first.yaw,
-    viewer.getConfig().maxHfov || 120,
-    1000
-);
+        const first = hs[0];
 
+        viewer.lookAt(
+            parseFloat(first.pitch),
+            parseFloat(first.yaw),
+            100,       // hfov iniziale (puoi regolarlo)
+            800        // durata animazione in ms
+        );
     }
 
 });
-	if (hotspots && hotspots.length > 0) {
-
-	    const first = hotspots[0];
-
-    viewer.lookAt(
-        first.pitch,
-        first.yaw,
-        null,      // non cambiare hfov
-        1000       // animazione 1 secondo
-    );
-
-}
-let lastState = "";
-
-
-
-    const newUrl = window.location.origin +
-                   window.location.pathname +
-                   '?open=' + encodeURIComponent(folderName) +
-                   '&img=' + encodeURIComponent(fileName);
-
-    history.replaceState(null, '', newUrl);
-
     const caption = document.getElementById('viewerCaption');
-    if (description && description.trim() !== '') {
+    if (description) {
         caption.innerText = description;
         caption.style.display = 'block';
     } else {
@@ -345,147 +304,66 @@ let lastState = "";
     }
 }
 
-function updateViewState() {
-
-    const yaw   = viewer.getYaw().toFixed(2);
-    const pitch = viewer.getPitch().toFixed(2);
-    const hfov  = viewer.getHfov().toFixed(2);
-
-    const parts = viewer.getConfig().panorama.split('/');
-    const folderName = parts[1];
-    const fileName   = parts[2];
-
-    const newUrl = window.location.origin +
-                   window.location.pathname +
-                   '?open=' + encodeURIComponent(folderName) +
-                   '&img=' + encodeURIComponent(fileName) +
-                   '&yaw=' + yaw +
-                   '&pitch=' + pitch +
-                   '&hfov=' + hfov;
-
-    history.replaceState(null, '', newUrl);
-}
-
 function closeViewer() {
+
     document.getElementById('viewerOverlay').style.display = 'none';
-    if (viewer) viewer.destroy();
-    viewer = null;
+
+    if (viewer) {
+        viewer.destroy();
+        viewer = null;
+    }
+
     document.getElementById('viewerCaption').style.display = 'none';
-	const url = window.location.origin +
-            window.location.pathname +
-            '?open=' + encodeURIComponent(autoOpenFolder || '');
-history.replaceState(null, '', url);
+
+    const url =
+        window.location.origin +
+        window.location.pathname +
+        '?open=' + encodeURIComponent(autoOpenFolder) +
+        '&token=' + encodeURIComponent(autoToken);
+
+    history.replaceState(null, '', url);
 }
-function shareFolder(event, folderName) {
-
-    event.stopPropagation();
-
-    const url = window.location.origin + window.location.pathname + '?open=' + encodeURIComponent(folderName);
-
-    if (navigator.share) {
-        navigator.share({
-            title: 'Foto 360',
-            url: url
-        }).catch(() => {});
-    } else {
-        navigator.clipboard.writeText(url).then(() => {
-            alert('Link copiato negli appunti:\n' + url);
-        });
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-
-    const accordion = document.getElementById('accordion360');
-
-    accordion.addEventListener('shown.bs.collapse', function(event) {
-
-        const collapseId = event.target.id; // es: collapse2026-02-10
-        const folderName = collapseId.replace('collapse', '');
-
-        const newUrl = window.location.origin +
-                       window.location.pathname +
-                       '?open=' + encodeURIComponent(folderName);
-
-        history.replaceState(null, '', newUrl);
-    });
-
-    accordion.addEventListener('hidden.bs.collapse', function(event) {
-
-        // Se nessuna cartella è aperta → pulisci URL
-        const openPanels = accordion.querySelectorAll('.accordion-collapse.show');
-
-        if (openPanels.length === 0) {
-            const cleanUrl = window.location.origin + window.location.pathname;
-            history.replaceState(null, '', cleanUrl);
-        }
-    });
-
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-
-    if (autoOpenFolder && autoOpenImage) {
-
-        const imagePath = 'images/' + autoOpenFolder + '/' + autoOpenImage;
-
-        // aspetta che bootstrap abbia aperto l'accordion
-        setTimeout(function() {
-            openViewer(imagePath, '');
-        }, 500);
-    }
-
-});
 
 document.getElementById('shareViewBtn').addEventListener('click', function() {
 
-    if (!viewer) return;
+    if (!viewer || !currentImageName) return;
 
     const yaw   = viewer.getYaw().toFixed(2);
     const pitch = viewer.getPitch().toFixed(2);
     const hfov  = viewer.getHfov().toFixed(2);
-
-    const parts = viewer.getConfig().panorama.split('/');
-    const folderName = parts[1];
-    const fileName   = parts[2];
 
     const shareUrl =
         window.location.origin +
         window.location.pathname +
-        '?open=' + encodeURIComponent(folderName) +
-        '&img=' + encodeURIComponent(fileName) +
+        '?open=' + encodeURIComponent(autoOpenFolder) +
+        '&token=' + encodeURIComponent(autoToken) +
+        '&img=' + encodeURIComponent(currentImageName) +
         '&yaw=' + yaw +
         '&pitch=' + pitch +
         '&hfov=' + hfov;
 
     if (navigator.share) {
-        navigator.share({
-            title: 'Foto 360',
-            url: shareUrl
-        }).catch(() => {});
+        navigator.share({ title:'Foto 360', url:shareUrl }).catch(()=>{});
     } else {
-        navigator.clipboard.writeText(shareUrl).then(() => {
+        navigator.clipboard.writeText(shareUrl);
+    }
+});
 
-            const btn = document.getElementById('shareViewBtn');
-            const originalText = btn.innerText;
+document.addEventListener('DOMContentLoaded', function() {
 
-            btn.innerText = "✓ Copiato";
-            setTimeout(() => {
-                btn.innerText = originalText;
-            }, 1500);
-
-        });
+    if (autoOpenImage) {
+        setTimeout(function() {
+            openViewer(
+                'images/' + autoOpenFolder + '/' + autoOpenImage,
+                '',
+                autoOpenImage
+            );
+        }, 500);
     }
 
 });
 
 </script>
-<script>
-const autoOpenFolder = <?= json_encode($openFolder) ?>;
-const autoOpenImage = <?= json_encode($openImage) ?>;
-const autoYaw   = <?= json_encode($yawParam) ?>;
-const autoPitch = <?= json_encode($pitchParam) ?>;
-const autoHfov  = <?= json_encode($hfovParam) ?>;
-</script>
+
 </body>
 </html>

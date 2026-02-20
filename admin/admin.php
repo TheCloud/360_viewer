@@ -1,7 +1,7 @@
 <?php
 
-$baseDir = __DIR__ . '/images';
-$thumbBaseDir = __DIR__ . '/thumbnails';
+$baseDir = dirname(__DIR__) . '/images';
+$thumbBaseDir = dirname(__DIR__) . '/thumbnails';
 
 define('SECRET_KEY', 'LA_STESSA_IDENTICA_STRINGA_DI_INDEX');
 function generateToken($folder) {
@@ -95,7 +95,7 @@ body { background:#111; color:#fff; }
 
     $preview = null;
     if ($count > 0) {
-        $preview = 'images/' . $name . '/' . basename($images[0]);
+	$preview = '/360/images/' . $name . '/' . basename($images[0]);
     }
 ?>
 
@@ -149,14 +149,19 @@ body { background:#111; color:#fff; }
 </a>
 <?php
 $token = generateToken($name);
+$token = generateToken($name);
+
 $publicUrl = "https://" . $_SERVER['HTTP_HOST']
-           . dirname($_SERVER['PHP_SELF'])
-           . "/index.php?open=" . urlencode($name)
+           . "/360/index.php?open=" . urlencode($name)
            . "&token=" . $token;
 ?>
 
+<button class="btn btn-sm btn-outline-success"
+        onclick="copyPublicLink(this, '<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>')">
+    🔗 Link pubblico
+</button>
 
-                <a href="index.php?open=<?= urlencode($name) ?>"
+                <a href="<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>"
                    target="_blank"
                    class="btn btn-sm btn-outline-secondary ms-2">
                     👁 Apri viewer
@@ -317,7 +322,7 @@ a:hover { text-decoration:underline; }
 ?>
 
 <div class="image-row">
-    <img src="<?= $relativeThumb ?>">
+    <img src="/360/<?= $relativeThumb ?>">
     <div class="image-info">
         <strong><?= sanitize($filename) ?></strong>
 

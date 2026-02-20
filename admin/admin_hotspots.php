@@ -1,6 +1,7 @@
 <?php
 
-$baseDir = __DIR__ . '/images';
+$baseDir = dirname(__DIR__) . '/images';
+$thumbBaseDir = dirname(__DIR__) . '/thumbnails';
 
 $folder = $_GET['folder'] ?? null;
 $image  = $_GET['image'] ?? null;
@@ -167,7 +168,7 @@ const hotspots = <?= json_encode($currentHotspots) ?>;
 
 const viewer = pannellum.viewer('panorama', {
     type: 'equirectangular',
-    panorama: 'images/<?= $folderName ?>/<?= $imageName ?>',
+    panorama: '/360/images/<?= $folderName ?>/<?= $imageName ?>',
     autoLoad: true,
     showControls: true,
     hotSpots: hotspots.map(h => ({
