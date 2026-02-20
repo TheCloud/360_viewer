@@ -155,10 +155,6 @@ $publicUrl = "https://" . $_SERVER['HTTP_HOST']
            . "&token=" . $token;
 ?>
 
-<button class="btn btn-sm btn-outline-secondary btn-outline-success mt-2"
-        onclick="copyPublicLink(this, '<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>')">
-    🔗 Link pubblico
-</button>
 
                 <a href="index.php?open=<?= urlencode($name) ?>"
                    target="_blank"
@@ -324,13 +320,20 @@ a:hover { text-decoration:underline; }
     <img src="<?= $relativeThumb ?>">
     <div class="image-info">
         <strong><?= sanitize($filename) ?></strong>
+
         <input type="text"
                name="images[<?= sanitize($filename) ?>]"
                value="<?= sanitize($desc) ?>"
                placeholder="Descrizione immagine">
+
+        <div style="margin-top:8px;">
+            <a href="admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=<?= urlencode($filename) ?>"
+               style="color:#0af;">
+                🟢 Modifica Hotspot
+            </a>
+        </div>
     </div>
 </div>
-
 <?php endforeach; ?>
 
 <button type="submit">Salva</button>

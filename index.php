@@ -12,18 +12,6 @@ $yawParam   = $_GET['yaw']   ?? null;
 $pitchParam = $_GET['pitch'] ?? null;
 $hfovParam  = $_GET['hfov']  ?? null;
 
-// ------------------------------
-// CONTROLLO ACCESSO
-// ------------------------------
-// Se è presente un token → validalo
-// Se non c'è token → lascia che sia Apache (.htaccess) a gestire l'accesso
-if ($token) {
-    if (!$openFolder || !isValidToken($openFolder, $token)) {
-        http_response_code(403);
-        die("Accesso non autorizzato");
-    }
-}
-
 $baseDir = __DIR__ . '/images';
 $thumbBaseDir = __DIR__ . '/thumbnails';
 
@@ -162,6 +150,8 @@ $meta = [
     'images' => []
 ];
 
+$folderComment = '';
+
 $metaFile = $folder . '/meta.json';
 if (file_exists($metaFile)) {
     $json = file_get_contents($metaFile);
@@ -176,7 +166,10 @@ if (file_exists($metaFile)) {
     if (!is_dir($thumbFolder)) mkdir($thumbFolder, 0755, true);
     $isOpen = ($openFolder === $folderName);
 ?>
-
+<script>
+window.metaData = window.metaData || {};
+window.metaData["<?= $folderName ?>"] = <?= json_encode($meta) ?>;
+</script>
 <div class="accordion-item bg-dark text-white border-secondary">
 <h2 class="accordion-header">
 <div class="d-flex justify-content-between align-items-center w-100">
@@ -263,33 +256,78 @@ function openViewer(imagePath, description) {
     document.getElementById('viewerOverlay').style.display = 'block';
     if (viewer) viewer.destroy();
 
-let config = {
-    type: 'equirectangular',
-    panorama: imagePath,
-    autoLoad: true,
-    showControls: true
-};
-
-if (autoYaw !== null && autoYaw !== "" && !isNaN(parseFloat(autoYaw))) {
-    config.yaw = parseFloat(autoYaw);
-}
-
-if (autoPitch !== null && autoPitch !== "" && !isNaN(parseFloat(autoPitch))) {
-    config.pitch = parseFloat(autoPitch);
-}
-
-if (autoHfov !== null && autoHfov !== "" && !isNaN(parseFloat(autoHfov))) {
-    config.hfov = parseFloat(autoHfov);
-}
-
-viewer = pannellum.viewer('panorama', config);
-
-viewer.on('mouseup', updateViewState);
-viewer.on('touchend', updateViewState);
-viewer.on('zoomchange', updateViewState);
     const parts = imagePath.split('/');
     const folderName = parts[1];
-    const fileName = parts[2];
+    const fileName   = parts[2];
+
+    let config = {
+        type: 'equirectangular',
+        panorama: imagePath,
+        autoLoad: true,
+        showControls: true,
+        minHfov: 40,
+        maxHfov: 120
+    };
+
+// HOTSPOT
+if (window.metaData &&
+    window.metaData[folderName] &&
+    window.metaData[folderName].hotspots &&
+    window.metaData[folderName].hotspots[fileName]) {
+
+    config.hotSpots = window.metaData[folderName].hotspots[fileName].map(h => ({
+        pitch: h.pitch,
+        yaw: h.yaw,
+        type: "info",
+        text: h.text
+    }));
+}
+
+    let yaw   = parseFloat(autoYaw);
+    let pitch = parseFloat(autoPitch);
+    let hfov  = parseFloat(autoHfov);
+
+    if (!isNaN(yaw))   config.yaw   = yaw;
+    if (!isNaN(pitch)) config.pitch = pitch;
+
+    if (!isNaN(hfov)) {
+        hfov = Math.max(40, Math.min(120, hfov));
+        config.hfov = hfov;
+    }
+
+    viewer = pannellum.viewer('panorama', config);
+viewer.on('load', function() {
+
+    // Se non c'è yaw nell'URL
+    if ((!autoYaw || autoYaw === "") && config.hotSpots && config.hotSpots.length > 0) {
+
+        const first = config.hotSpots[0];
+
+viewer.lookAt(
+    first.pitch,
+    first.yaw,
+    viewer.getConfig().maxHfov || 120,
+    1000
+);
+
+    }
+
+});
+	if (hotspots && hotspots.length > 0) {
+
+	    const first = hotspots[0];
+
+    viewer.lookAt(
+        first.pitch,
+        first.yaw,
+        null,      // non cambiare hfov
+        1000       // animazione 1 secondo
+    );
+
+}
+let lastState = "";
+
+
 
     const newUrl = window.location.origin +
                    window.location.pathname +
@@ -398,17 +436,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 });
+
 document.getElementById('shareViewBtn').addEventListener('click', function() {
 
-    const currentUrl = window.location.href;
+    if (!viewer) return;
+
+    const yaw   = viewer.getYaw().toFixed(2);
+    const pitch = viewer.getPitch().toFixed(2);
+    const hfov  = viewer.getHfov().toFixed(2);
+
+    const parts = viewer.getConfig().panorama.split('/');
+    const folderName = parts[1];
+    const fileName   = parts[2];
+
+    const shareUrl =
+        window.location.origin +
+        window.location.pathname +
+        '?open=' + encodeURIComponent(folderName) +
+        '&img=' + encodeURIComponent(fileName) +
+        '&yaw=' + yaw +
+        '&pitch=' + pitch +
+        '&hfov=' + hfov;
 
     if (navigator.share) {
         navigator.share({
             title: 'Foto 360',
-            url: currentUrl
+            url: shareUrl
         }).catch(() => {});
     } else {
-        navigator.clipboard.writeText(currentUrl).then(() => {
+        navigator.clipboard.writeText(shareUrl).then(() => {
 
             const btn = document.getElementById('shareViewBtn');
             const originalText = btn.innerText;
@@ -422,6 +478,7 @@ document.getElementById('shareViewBtn').addEventListener('click', function() {
     }
 
 });
+
 </script>
 <script>
 const autoOpenFolder = <?= json_encode($openFolder) ?>;
