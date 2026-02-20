@@ -1,5 +1,29 @@
 <?php
 
+
+// ------------------------------
+// PARAMETRI
+// ------------------------------
+$openFolder = $_GET['open'] ?? null;
+$openImage  = $_GET['img']  ?? null;
+$token      = $_GET['token'] ?? null;
+
+$yawParam   = $_GET['yaw']   ?? null;
+$pitchParam = $_GET['pitch'] ?? null;
+$hfovParam  = $_GET['hfov']  ?? null;
+
+// ------------------------------
+// CONTROLLO ACCESSO
+// ------------------------------
+// Se è presente un token → validalo
+// Se non c'è token → lascia che sia Apache (.htaccess) a gestire l'accesso
+if ($token) {
+    if (!$openFolder || !isValidToken($openFolder, $token)) {
+        http_response_code(403);
+        die("Accesso non autorizzato");
+    }
+}
+
 $baseDir = __DIR__ . '/images';
 $thumbBaseDir = __DIR__ . '/thumbnails';
 

@@ -3,6 +3,11 @@
 $baseDir = __DIR__ . '/images';
 $thumbBaseDir = __DIR__ . '/thumbnails';
 
+define('SECRET_KEY', 'LA_STESSA_IDENTICA_STRINGA_DI_INDEX');
+function generateToken($folder) {
+    return hash_hmac('sha256', $folder, SECRET_KEY);
+}
+
 function sanitize($str) {
     return htmlspecialchars($str ?? '', ENT_QUOTES);
 }
@@ -56,7 +61,11 @@ body { background:#111; color:#fff; }
 <body class="container py-4">
 
 <h1 class="mb-4">Gestione Cartelle 360</h1>
-
+<div class="mb-3">
+    <a href="admin_upload.php" class="btn btn-success">
+        ➕ Nuova cartella / Upload
+    </a>
+</div>
 <div class="row g-4">
 
 <?php foreach ($folders as $folder):
@@ -99,7 +108,15 @@ body { background:#111; color:#fff; }
 
         <div class="card-body d-flex flex-column">
 
-            <h5 class="card-title"><?= sanitize($name) ?></h5>
+<h5 class="card-title">
+    <?= $folderComment ? sanitize($folderComment) : sanitize($name) ?>
+</h5>
+
+<?php if ($folderComment): ?>
+    <div class="text-secondary small">
+        <?= sanitize($name) ?>
+    </div>
+<?php endif; ?>
 
             <?php if (!$hasMeta): ?>
                 <span class="badge bg-danger mb-2">
@@ -125,6 +142,18 @@ body { background:#111; color:#fff; }
                    class="btn btn-sm <?= $hasMeta ? 'btn-outline-light' : 'btn-warning text-dark' ?>">
                     <?= $hasMeta ? '✏ Modifica' : '➕ Crea descrizioni' ?>
                 </a>
+<?php
+$token = generateToken($name);
+$publicUrl = "https://" . $_SERVER['HTTP_HOST']
+           . dirname($_SERVER['PHP_SELF'])
+           . "/index.php?open=" . urlencode($name)
+           . "&token=" . $token;
+?>
+
+<button class="btn btn-sm btn-outline-secondary btn-outline-success mt-2"
+        onclick="copyPublicLink(this, '<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>')">
+    🔗 Link pubblico
+</button>
 
                 <a href="index.php?open=<?= urlencode($name) ?>"
                    target="_blank"
@@ -141,6 +170,53 @@ body { background:#111; color:#fff; }
 <?php endforeach; ?>
 
 </div>
+
+<script>
+function copyPublicLink(button, url) {
+
+    if (navigator.clipboard && window.isSecureContext) {
+
+        navigator.clipboard.writeText(url).then(() => {
+            showCopied(button);
+        }).catch(() => {
+            fallbackCopy(button, url);
+        });
+
+    } else {
+        fallbackCopy(button, url);
+    }
+}
+
+function fallbackCopy(button, url) {
+
+    const textarea = document.createElement("textarea");
+    textarea.value = url;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+
+    try {
+        document.execCommand("copy");
+        showCopied(button);
+    } catch (err) {
+        alert("Copia non riuscita.\n\n" + url);
+    }
+
+    document.body.removeChild(textarea);
+}
+
+function showCopied(button) {
+    const original = button.innerText;
+    button.innerText = "✓ Copiato";
+    setTimeout(() => {
+        button.innerText = original;
+    }, 1500);
+}
+</script>
+
 </body>
 </html>
 <?php
@@ -255,5 +331,57 @@ a:hover { text-decoration:underline; }
 <button type="submit">Salva</button>
 
 </form>
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        alert("Link copiato negli appunti");
+    });
+}
+</script>
+<script>
+function copyPublicLink(button, url) {
+
+    if (navigator.clipboard && window.isSecureContext) {
+
+        navigator.clipboard.writeText(url).then(() => {
+            showCopied(button);
+        }).catch(() => {
+            fallbackCopy(button, url);
+        });
+
+    } else {
+        fallbackCopy(button, url);
+    }
+}
+
+function fallbackCopy(button, url) {
+
+    const textarea = document.createElement("textarea");
+    textarea.value = url;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+
+    try {
+        document.execCommand("copy");
+        showCopied(button);
+    } catch (err) {
+        alert("Copia non riuscita.\n\n" + url);
+    }
+
+    document.body.removeChild(textarea);
+}
+
+function showCopied(button) {
+    const original = button.innerText;
+    button.innerText = "✓ Copiato";
+    setTimeout(() => {
+        button.innerText = original;
+    }, 1500);
+}
+</script>
 </body>
 </html>
