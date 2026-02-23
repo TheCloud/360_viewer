@@ -1,15 +1,61 @@
 <?php
 
-$baseDir = dirname(__DIR__) . '/images';
-$thumbBaseDir = dirname(__DIR__) . '/thumbnails';
+require_once __DIR__ . '/../config.php';
 
-define('SECRET_KEY', 'LA_STESSA_IDENTICA_STRINGA_DI_INDEX');
+$baseDir = IMAGES_DIR;
+$thumbBaseDir = THUMB_DIR;
+
 function generateToken($folder) {
     return hash_hmac('sha256', $folder, SECRET_KEY);
 }
 
 function sanitize($str) {
     return htmlspecialchars($str ?? '', ENT_QUOTES);
+}
+
+
+function deleteFolderRecursive($dir) {
+
+    if (!is_dir($dir)) return;
+
+    $files = scandir($dir);
+
+    foreach ($files as $file) {
+        if ($file == '.' || $file == '..') continue;
+
+        $fullPath = $dir . '/' . $file;
+
+        if (is_dir($fullPath)) {
+            deleteFolderRecursive($fullPath);
+        } else {
+            unlink($fullPath);
+        }
+    }
+
+    rmdir($dir);
+}
+
+/* =========================
+   ELIMINAZIONE ALBUM
+========================= */
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_folder'])) {
+
+    $folder = basename($_POST['delete_folder']);
+
+    $imagesPath = $baseDir . '/' . $folder;
+    $thumbPath  = $thumbBaseDir . '/' . $folder;
+
+    if (is_dir($imagesPath)) {
+        deleteFolderRecursive($imagesPath);
+    }
+
+    if (is_dir($thumbPath)) {
+        deleteFolderRecursive($thumbPath);
+    }
+
+    header("Location: admin.php");
+    exit;
 }
 
 function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
@@ -49,13 +95,17 @@ if (!$currentFolder) {
 <!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta charset="UTF-8">
 <title>Admin 360</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
 body { background:#111; color:#fff; }
 .card { background:#1a1a1a; border:1px solid #333; }
-.card img { object-fit:cover; height:180px; }
+.card img {
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+}
 </style>
 </head>
 <body class="container py-4">
@@ -71,7 +121,7 @@ body { background:#111; color:#fff; }
 <?php foreach ($folders as $folder):
 
     $name = basename($folder);
-    $images = glob($folder . '/*.jpg');
+    $images = glob($folder . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
     $count = count($images);
 
     $metaFile = $folder . '/meta.json';
@@ -95,15 +145,15 @@ body { background:#111; color:#fff; }
 
     $preview = null;
     if ($count > 0) {
-	$preview = '/360/images/' . $name . '/' . basename($images[0]);
+	$preview = IMAGES_URL .'/'. $name . '/' . basename($images[0]);
     }
 ?>
 
-<div class="col-md-4">
+<div class="col-12 col-sm-6 col-lg-4">
     <div class="card text-white h-100">
 
         <?php if ($preview): ?>
-            <img src="<?= $preview ?>" class="card-img-top">
+            <img src="<?= $preview ?>" class="card-img-top img-fluid">
         <?php endif; ?>
 
         <div class="card-body d-flex flex-column">
@@ -151,22 +201,28 @@ body { background:#111; color:#fff; }
 $token = generateToken($name);
 $token = generateToken($name);
 
-$publicUrl = "https://" . $_SERVER['HTTP_HOST']
-           . "/360/index.php?open=" . urlencode($name)
+$publicUrl = APP_SCHEME.'://' . $_SERVER['HTTP_HOST']
+           . APP_BASE_URL."/index.php?open=" . urlencode($name)
            . "&token=" . $token;
 ?>
 
+<div class="d-flex flex-wrap gap-2 mt-3">
 <button class="btn btn-sm btn-outline-success"
         onclick="copyPublicLink(this, '<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>')">
     🔗 Link pubblico
 </button>
-
                 <a href="<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>"
                    target="_blank"
                    class="btn btn-sm btn-outline-secondary ms-2">
                     👁 Apri viewer
                 </a>
-
+<form method="post" onsubmit="return confirm('Sei sicuro di voler eliminare definitivamente questo album?');" style="display:inline;">
+    <input type="hidden" name="delete_folder" value="<?= htmlspecialchars($name) ?>">
+    <button type="submit" class="btn btn-sm btn-outline-danger mt-2">
+        🗑 Elimina
+    </button>
+</form>
+</div>
             </div>
 
         </div>
@@ -240,8 +296,9 @@ if (!is_dir($folderPath)) {
     die("Cartella non valida");
 }
 
-$images = glob($folderPath . '/*.jpg');
+$images = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
 $metaFile = $folderPath . '/meta.json';
+
 
 $meta = [
     'folder_comment' => '',
@@ -289,7 +346,10 @@ body { font-family: Arial; background:#111; color:#fff; padding:20px; }
 input, textarea { width:100%; padding:8px; background:#222; border:1px solid #444; color:#fff; }
 button { padding:10px 20px; background:#444; color:#fff; border:none; cursor:pointer; margin-top:20px; }
 .image-row { display:flex; flex-direction:column; gap:10px; margin-bottom:30px; background:#1a1a1a; padding:15px; border-radius:8px; }
-.image-row img { width:600px; max-width:100%; border-radius:6px; }
+.image-row img {
+    width:100%;
+    max-width:600px;
+}
 .image-info { width:100%; }
 a { color:#0af; text-decoration:none; }
 a:hover { text-decoration:underline; }
@@ -312,7 +372,7 @@ a:hover { text-decoration:underline; }
 
     $filename = basename($img);
     $thumbPath = $thumbFolder . '/' . $filename;
-    $relativeThumb = 'thumbnails/' . $folderName . '/' . $filename;
+    $relativeThumb = THUMB_URL.'/' . $folderName . '/' . $filename;
 
     if (!file_exists($thumbPath) || filemtime($img) > filemtime($thumbPath)) {
         createThumbnail($img, $thumbPath, 800);
@@ -322,7 +382,7 @@ a:hover { text-decoration:underline; }
 ?>
 
 <div class="image-row">
-    <img src="/360/<?= $relativeThumb ?>">
+    <img src="<?= $relativeThumb ?>">
     <div class="image-info">
         <strong><?= sanitize($filename) ?></strong>
 

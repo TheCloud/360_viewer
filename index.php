@@ -1,6 +1,5 @@
 <?php
-
-define('SECRET_KEY', 'LA_STESSA_IDENTICA_STRINGA_DI_INDEX');
+require_once __DIR__ . '/config.php';
 
 function generateToken($folder) {
     return hash_hmac('sha256', $folder, SECRET_KEY);
@@ -10,8 +9,8 @@ function isValidToken($folder, $token) {
     return hash_equals(generateToken($folder), $token ?? '');
 }
 
-$baseDir      = __DIR__ . '/images';
-$thumbBaseDir = __DIR__ . '/thumbnails';
+$baseDir = IMAGES_DIR;
+$thumbBaseDir = THUMB_DIR;
 
 $openFolder = $_GET['open'] ?? null;
 $openImage  = $_GET['img'] ?? null;
@@ -26,21 +25,131 @@ $hfovParam  = $_GET['hfov'] ?? null;
 ========================= */
 
 if (!$openFolder || !isValidToken($openFolder, $token)) {
+
     http_response_code(403);
-    die("Accesso non autorizzato");
+    ?>
+    <!DOCTYPE html>
+    <html lang="it">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Accesso riservato</title>
+        <style>
+            body {
+                margin:0;
+                background:#000;
+                color:#fff;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                height:100vh;
+                font-family:Arial, sans-serif;
+                text-align:center;
+            }
+            .box {
+                max-width:600px;
+            }
+            .code {
+                font-size:80px;
+                font-weight:bold;
+                color:#ff3b3b;
+                margin-bottom:20px;
+            }
+            .msg {
+                font-size:22px;
+                margin-bottom:15px;
+            }
+            .sub {
+                font-size:16px;
+                color:#aaa;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box">
+            <div class="code">403</div>
+            <div class="msg">Accesso riservato</div>
+            <div class="sub">
+                Questo contenuto è protetto.<br>
+                Il link utilizzato non è valido o è scaduto.
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
 $folderPath = $baseDir . '/' . basename($openFolder);
 
 if (!is_dir($folderPath)) {
-    die("Cartella non valida");
+
+    http_response_code(404);
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Album non trovato</title>
+        <style>
+            body {
+                margin:0;
+                height:100vh;
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                background:#0d0d0d;
+                color:#fff;
+                font-family:Arial, sans-serif;
+                text-align:center;
+            }
+            .box {
+                max-width:500px;
+                padding:40px;
+                background:#1a1a1a;
+                border:1px solid #333;
+                border-radius:12px;
+                box-shadow:0 0 40px rgba(0,0,0,0.6);
+            }
+            h1 {
+                font-size:28px;
+                margin-bottom:15px;
+                color:#ff6b6b;
+            }
+            p {
+                color:#aaa;
+                margin-bottom:25px;
+            }
+            a {
+                display:inline-block;
+                padding:10px 20px;
+                background:#222;
+                border:1px solid #444;
+                color:#fff;
+                text-decoration:none;
+                border-radius:6px;
+            }
+            a:hover {
+                background:#333;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box">
+            <h1>📂 Album non trovato</h1>
+            <p>L'album richiesto non esiste o è stato rimosso.</p>
+            <a href="/360/">Torna alla galleria</a>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
 /* =========================
    THUMBNAIL
 ========================= */
-
-function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
+function createThumbnail($sourcePath, $thumbPath, $size = 800) {
 
     if (!extension_loaded('gd')) return false;
 
@@ -49,15 +158,27 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
 
     list($width, $height) = $info;
 
-    $ratio     = $height / $width;
-    $newWidth  = $maxWidth;
-    $newHeight = $maxWidth * $ratio;
-
     $src = imagecreatefromjpeg($sourcePath);
     if (!$src) return false;
 
-    $thumb = imagecreatetruecolor($newWidth, $newHeight);
-    imagecopyresampled($thumb, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+    // Lato del quadrato = min(width, height)
+    $cropSize = min($width, $height);
+
+    // Centro orizzontale
+    $srcX = ($width - $cropSize) / 2;
+    $srcY = ($height - $cropSize) / 2;
+
+    $thumb = imagecreatetruecolor($size, $size);
+
+    imagecopyresampled(
+        $thumb,
+        $src,
+        0, 0,
+        $srcX, $srcY,
+        $size, $size,
+        $cropSize, $cropSize
+    );
+
     imagejpeg($thumb, $thumbPath, 80);
 
     imagedestroy($src);
@@ -66,7 +187,7 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
     return true;
 }
 
-$images = glob($folderPath . '/*.jpg');
+    $images = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
 
 $meta = [
     'folder_comment' => '',
@@ -253,17 +374,25 @@ function openViewer(imagePath, description, fileName) {
     currentImageName = fileName;
 
     document.getElementById('viewerOverlay').style.display = 'block';
+    let imageTitle = fileName;
 
     if (viewer) {
         viewer.destroy();
         viewer = null;
     }
-
+let previewPath = imagePath.replace('/images/', '/thumbnails/');
 let config = {
     type: 'equirectangular',
     panorama: imagePath,
-    autoLoad: true,
+    preview: previewPath,
+    autoLoad: false,
     showControls: true,
+    title: imageTitle,
+strings: {
+    loadButtonLabel: "Clicca e carica 360°",
+    loadingLabel: "Caricamento in corso...",
+    bylineLabel: ""
+},
     hotSpots: (imageHotspotsData?.[fileName] || []).map(h => ({
         pitch: parseFloat(h.pitch),
         yaw: parseFloat(h.yaw),
@@ -285,7 +414,6 @@ viewer.on('load', function () {
     if (hs.length > 0) {
 
         const first = hs[0];
-
         viewer.lookAt(
             parseFloat(first.pitch),
             parseFloat(first.yaw),

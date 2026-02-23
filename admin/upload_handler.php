@@ -1,7 +1,16 @@
 <?php
+ini_set('memory_limit', '512M');
 
-$baseDir = dirname(__DIR__) . '/images';
-$thumbBaseDir = dirname(__DIR__) . '/thumbnails';
+require_once __DIR__ . '/../config.php';
+
+$baseDir = IMAGES_DIR;
+$thumbBaseDir = THUMB_DIR;
+
+file_put_contents(
+    __DIR__ . '/debug.log',
+    print_r($_FILES, true),
+    FILE_APPEND
+);
 
 function sanitize($str) {
     return preg_replace('/[^a-zA-Z0-9-_]/', '', $str);
@@ -42,8 +51,12 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
     $newHeight = $maxWidth * $ratio;
 
     $src = imagecreatefromjpeg($sourcePath);
-    if (!$src) return false;
 
+if (!$src) {
+    file_put_contents(__DIR__.'/debug.log', "GD FAIL\n", FILE_APPEND);
+    echo json_encode(['success' => true]);
+    exit;
+}
     $thumb = imagecreatetruecolor($newWidth, $newHeight);
     imagecopyresampled($thumb, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
     imagejpeg($thumb, $thumbPath, 80);
@@ -111,4 +124,10 @@ if (!move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)) {
 $thumbPath = $thumbFolder . '/' . $originalName;
 createThumbnail($targetPath, $thumbPath, 800);
 
+file_put_contents(
+    __DIR__ . '/debug.log',$thumbPath,FILE_APPEND
+);
+
+
 echo "OK";
+
