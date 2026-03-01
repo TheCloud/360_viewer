@@ -25,64 +25,153 @@ $hfovParam  = $_GET['hfov'] ?? null;
 ========================= */
 
 if (!$openFolder || !isValidToken($openFolder, $token)) {
-    http_response_code(403);
-        ?>
-    <!DOCTYPE html>
-    <html lang="it">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Accesso riservato</title>
-        <style>
-            body {
-                margin:0;
-                background:#000;
-                color:#fff;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                height:100vh;
-                font-family:Arial, sans-serif;
-                text-align:center;
-            }
-            .box { max-width:600px; }
-            .code {
-                font-size:80px;
-                font-weight:bold;
-                color:#ff3b3b;
-                margin-bottom:20px;
-            }
-            .msg { font-size:22px; margin-bottom:15px; }
-            .sub { font-size:16px; color:#aaa; }
-        </style>
-    </head>
-    <body>
-        <div class="box">
-            <div class="code">403</div>
-            <div class="msg">Accesso riservato</div>
-            <div class="sub">
-                Questo contenuto è protetto.<br>
-                Il link utilizzato non è valido o è scaduto.
-            </div>
-        </div>
-    </body>
-    </html>
-    <?php
+http_response_code(403);
+?>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accesso riservato</title>
+<style>
+html {
+    height:100%;
 }
+
+body {
+    margin:0;
+    min-height:100vh; /* fallback */
+    min-height:100dvh; /* viewport dinamica mobile */
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#000;
+    color:#fff;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    text-align:center;
+}
+
+.box {
+    max-width:600px;
+    padding:40px;
+}
+
+.code {
+    font-size:90px;
+    font-weight:700;
+    color:#ff3b3b;
+    margin-bottom:20px;
+}
+
+.msg {
+    font-size:22px;
+    margin-bottom:15px;
+}
+
+.sub {
+    font-size:15px;
+    color:#aaa;
+}
+</style>
+</head>
+<body>
+    <div class="box">
+        <div class="code">403</div>
+        <div class="msg">Accesso riservato</div>
+        <div class="sub">
+            Questo contenuto è protetto.<br>
+            Il link utilizzato non è valido o è scaduto.
+        </div>
+    </div>
+</body>
+</html>
+<?php
+exit;}
 
 $folderPath = $baseDir . '/' . basename($openFolder);
 
 if (!is_dir($folderPath)) {
-    http_response_code(404);
-    exit("Album non trovato");
+http_response_code(403);
+?>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accesso riservato</title>
+<style>
+html {
+    height:100%;
 }
+
+body {
+    margin:0;
+    min-height:100vh; /* fallback */
+    min-height:100dvh; /* viewport dinamica mobile */
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#000;
+    color:#fff;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    text-align:center;
+}
+
+.box {
+    max-width:600px;
+    padding:40px;
+}
+
+.code {
+    font-size:90px;
+    font-weight:700;
+    color:#ff3b3b;
+    margin-bottom:20px;
+}
+
+.msg {
+    font-size:22px;
+    margin-bottom:15px;
+}
+
+.sub {
+    font-size:15px;
+    color:#aaa;
+}
+</style>
+</head>
+<body>
+    <div class="box">
+        <div class="code">404</div>
+        <div class="msg">Album non trovato</div>
+        <div class="sub">
+            Questo contenuto non è stato trovato.<br>
+            Il link utilizzato non è valido o è scaduto.
+        </div>
+    </div>
+</body>
+</html>
+<?php
+exit;}
 
 /* =========================
    IMMAGINI + META
 ========================= */
 
 $images = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
+if ($startImage) {
 
+    usort($images, function($a, $b) use ($startImage) {
+
+        $fa = basename($a);
+        $fb = basename($b);
+
+        if ($fa === $startImage) return -1;
+        if ($fb === $startImage) return 1;
+
+        return 0;
+    });
+}
 $meta = [
     'folder_comment' => '',
     'start_image'    => null,
@@ -120,6 +209,11 @@ if (!empty($meta['start_image']) &&
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <style>
 body { background:#111; color:#fff; }
+
+.start-thumb {
+    border: 3px solid #28a745 !important;
+    box-shadow: 0 0 12px rgba(40,167,69,0.6);
+}
 
 .thumb-wrapper {
     position: relative;
@@ -243,11 +337,34 @@ body { background:#111; color:#fff; }
     $relativeThumb = 'thumbnails/' . $openFolder . '/' . $filename;
     $description   = $meta['images'][$filename] ?? '';
     $isPanorama    = $meta['panoramas'][$filename] ?? false;
+    $isStart = ($filename === $startImage);
+$dataOra = null;
+
+if (function_exists('exif_read_data')) {
+
+    $exif = @exif_read_data($img);
+
+    if (!empty($exif['DateTimeOriginal'])) {
+
+        $raw = $exif['DateTimeOriginal']; // formato: 2026:03:01 14:37:22
+        $dt = DateTime::createFromFormat('Y:m:d H:i:s', $raw);
+
+        if ($dt) {
+            $dataOra = $dt->format('d/m/Y H:i');
+        }
+    }
+}
+
+// fallback se EXIF assente
+if (!$dataOra) {
+    $dataOra = date('d/m/Y H:i', filemtime($img));
+}
+
 ?>
 
 <div class="thumb-wrapper">
 
-    <div class="thumb"
+    <div class="thumb <?= $isStart ? 'start-thumb' : '' ?>"
          style="background-image:url('<?= $relativeThumb ?>')"
          onclick="openViewer(
             '<?= $relativeImage ?>',
@@ -255,7 +372,17 @@ body { background:#111; color:#fff; }
             '<?= $filename ?>'
          )">
     </div>
+<div class="text-center mt-2 small text-light">
 
+    <div style="font-weight:600;">
+        <?= htmlspecialchars($description) ?>
+    </div>
+
+    <div style="color:#aaa;">
+        <?= $dataOra ?>
+    </div>
+
+</div>
     <?php if ($isPanorama): ?>
         <div class="pano-badge"><i class="bi bi-globe"></i></div>
     <?php endif; ?>
@@ -402,6 +529,7 @@ function closeViewer() {
     document.getElementById('panorama').innerHTML = '';
 }
 
+
 document.addEventListener('DOMContentLoaded', function() {
 
     if (autoOpenImage) {
@@ -409,12 +537,6 @@ document.addEventListener('DOMContentLoaded', function() {
             'images/' + autoOpenFolder + '/' + autoOpenImage,
             '',
             autoOpenImage
-        );
-    } else if (<?= json_encode($startImage) ?>) {
-        openViewer(
-            'images/' + autoOpenFolder + '/' + <?= json_encode($startImage) ?>,
-            '',
-            <?= json_encode($startImage) ?>
         );
     }
 
