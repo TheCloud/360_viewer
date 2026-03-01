@@ -109,7 +109,13 @@ const progressBar = document.getElementById('progressBar');
 const progressWrapper = document.getElementById('progressWrapper');
 const result = document.getElementById('result');
 
-dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', function (e) {
+
+    if (e.target === dropZone) {
+        fileInput.click();
+    }
+
+});
 
 dropZone.addEventListener('dragover', e => {
     e.preventDefault();
@@ -128,6 +134,15 @@ dropZone.addEventListener('drop', e => {
 
 fileInput.addEventListener('change', () => {
     uploadFiles(fileInput.files);
+});
+
+fileInput.addEventListener('change', function () {
+    const count = this.files.length;
+    if (count > 0) {
+        dropZone.innerText =
+            "Inizio caricamento di " + count + " file... attendere prego...";
+    }
+
 });
 
 async function uploadFiles(files) {
@@ -161,8 +176,11 @@ if (!response.ok) {
         progressBar.style.width = percent + '%';
         progressBar.innerText = percent + '%';
     }
-
-    result.innerHTML = '<div class="alert alert-success">Upload completato</div>';
+dropZone.innerHTML = `Caricamento completato ✅`;
+result.innerHTML = `<a href="admin.php?folder=${folderName}"
+        class="btn btn-success">
+        Visualizza immagini
+     </a>`;
 }
 </script>
 

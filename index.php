@@ -191,6 +191,7 @@ function createThumbnail($sourcePath, $thumbPath, $size = 800) {
 
 $meta = [
     'folder_comment' => '',
+    'start_image'    => null,
     'images'   => [],
     'hotspots' => []
 ];
@@ -203,6 +204,14 @@ if (file_exists($metaFile)) {
         $meta = array_merge($meta, $decoded);
     }
 }
+
+$startImage = null;
+if (!empty($meta['start_image']) &&
+    file_exists($folderPath . '/' . $meta['start_image'])) {
+    $startImage = $meta['start_image'];
+} 
+
+
 
 $thumbFolder = $thumbBaseDir . '/' . $openFolder;
 if (!is_dir($thumbFolder)) {
@@ -246,6 +255,42 @@ body { background:#111; color:#fff; }
     0% { transform:scale(0.6); opacity:1; }
     100% { transform:scale(1.6); opacity:0; }
 }
+.link-hotspot {
+    width: 34px !important;
+    height: 34px !important;
+    display: block !important;
+    position: absolute !important;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.link-hotspot::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(255,180,0,0.95) 20%,
+        rgba(255,120,0,0.8) 50%,
+        rgba(255,60,0,0.5) 75%,
+        transparent 100%);
+    box-shadow: 0 0 14px rgba(255,120,0,0.9);
+}
+
+.link-hotspot::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -70%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 14px solid white;
+    pointer-events: none;
+}
+
 .thumb {
     width:300px;
     height:150px;
@@ -353,8 +398,14 @@ body { background:#111; color:#fff; }
 <div id="panorama"></div>
 <div id="viewerCaption" class="viewer-caption" style="display:none;"></div>
 </div>
+    <script>
+window.imageHotspotsData = <?= json_encode(
+    $meta['hotspots'] ?? [],
+    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
+) ?>;
 
-<script>
+</script>
+    <script>
 
 let viewer = null;
 let currentImageName = null;
@@ -363,14 +414,17 @@ let autoOpenFolder = <?= json_encode($openFolder) ?>;
 let autoOpenImage  = <?= json_encode($openImage) ?>;
 let autoToken      = <?= json_encode($token) ?>;
 
+
 let autoYaw   = <?= json_encode($yawParam) ?>;
 let autoPitch = <?= json_encode($pitchParam) ?>;
 let autoHfov  = <?= json_encode($hfovParam) ?>;
 
-let imageHotspotsData = <?= json_encode($meta['hotspots'] ?? []) ?>;
+let imageHotspotsData = window.imageHotspotsData || {};
 
 function openViewer(imagePath, description, fileName) {
-
+console.log("OPENING:", fileName);
+console.log("HOTSPOTS RAW:", imageHotspotsData);
+console.log("THIS IMAGE HS:", imageHotspotsData[fileName]);
     currentImageName = fileName;
 
     document.getElementById('viewerOverlay').style.display = 'block';
@@ -385,7 +439,7 @@ let config = {
     type: 'equirectangular',
     panorama: imagePath,
     preview: previewPath,
-    autoLoad: false,
+    autoLoad: true,
     showControls: true,
     title: imageTitle,
 strings: {
@@ -393,13 +447,38 @@ strings: {
     loadingLabel: "Caricamento in corso...",
     bylineLabel: ""
 },
-    hotSpots: (imageHotspotsData?.[fileName] || []).map(h => ({
-        pitch: parseFloat(h.pitch),
-        yaw: parseFloat(h.yaw),
-        text: h.text || '',
+    hotSpots: (imageHotspotsData[fileName] || []).map(h => {
+
+    const pitch = parseFloat(h.pitch);
+    const yaw   = parseFloat(h.yaw);
+
+    if (isNaN(pitch) || isNaN(yaw)) {
+        console.warn("HOTSPOT INVALIDO:", h);
+        return null;
+    }
+
+    if (h.type === 'link' && h.target) {
+        return {
+            pitch: pitch,
+            yaw: yaw,
+            type: 'info',
+            text: h.text || '',
+            cssClass: 'link-hotspot',
+            clickHandlerFunc: function() {
+                loadScene(h.target);
+            }
+        };
+    }
+
+    return {
+        pitch: pitch,
+        yaw: yaw,
         type: 'info',
+        text: h.text || '',
         cssClass: 'custom-hotspot'
-    }))
+    };
+
+}).filter(Boolean)
 };
 
     if (autoYaw)   config.yaw   = parseFloat(autoYaw);
@@ -431,6 +510,27 @@ viewer.on('load', function () {
         caption.style.display = 'none';
     }
 }
+
+function loadScene(targetFile) {
+
+    const newImagePath = 'images/' + autoOpenFolder + '/' + targetFile;
+
+    openViewer(
+        newImagePath,
+        '',
+        targetFile
+    );
+
+    const newUrl =
+        window.location.origin +
+        window.location.pathname +
+        '?open=' + encodeURIComponent(autoOpenFolder) +
+        '&token=' + encodeURIComponent(autoToken) +
+        '&img=' + encodeURIComponent(targetFile);
+
+    history.replaceState(null, '', newUrl);
+}
+
 
 function closeViewer() {
 
@@ -473,13 +573,26 @@ document.getElementById('shareViewBtn').addEventListener('click', function() {
     if (navigator.share) {
         navigator.share({ title:'Foto 360', url:shareUrl }).catch(()=>{});
     } else {
-        navigator.clipboard.writeText(shareUrl);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(shareUrl).catch(()=>{});
+} else {
+    // fallback classico
+    const tmp = document.createElement('input');
+    tmp.value = shareUrl;
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    document.body.removeChild(tmp);
+}
     }
 });
 
+const defaultStartImage = <?= json_encode($startImage) ?>;
+
 document.addEventListener('DOMContentLoaded', function() {
 
-    if (autoOpenImage) {
+    if (autoOpenImage && !defaultStartImage) {
+
         setTimeout(function() {
             openViewer(
                 'images/' + autoOpenFolder + '/' + autoOpenImage,
@@ -487,10 +600,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 autoOpenImage
             );
         }, 500);
+
+    } else if (defaultStartImage) {
+
+        setTimeout(function() {
+            openViewer(
+                'images/' + autoOpenFolder + '/' + defaultStartImage,
+                '',
+                defaultStartImage
+            );
+        }, 500);
+
     }
 
 });
-
 </script>
 
 </body>

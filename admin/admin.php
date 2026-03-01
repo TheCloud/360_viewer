@@ -64,20 +64,23 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
 
     $info = getimagesize($sourcePath);
     if (!$info) return false;
-
     list($width, $height) = $info;
-
     $ratio = $height / $width;
-    $newWidth = $maxWidth;
+    $newWidth  = $maxWidth;
     $newHeight = $maxWidth * $ratio;
-
     $src = imagecreatefromjpeg($sourcePath);
     if (!$src) return false;
-
     $thumb = imagecreatetruecolor($newWidth, $newHeight);
-    imagecopyresampled($thumb, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-    imagejpeg($thumb, $thumbPath, 80);
+    imagecopyresampled(
+        $thumb,
+        $src,
+        0, 0,
+        0, 0,
+        $newWidth, $newHeight,
+        $width, $height
+    );
 
+    imagejpeg($thumb, $thumbPath, 80);
     imagedestroy($src);
     imagedestroy($thumb);
 
@@ -106,7 +109,10 @@ body { background:#111; color:#fff; }
     aspect-ratio: 2 / 1;
     object-fit: cover;
 }
+
+
 </style>
+
 </head>
 <body class="container py-4">
 
@@ -145,7 +151,7 @@ body { background:#111; color:#fff; }
 
     $preview = null;
     if ($count > 0) {
-	$preview = IMAGES_URL .'/'. $name . '/' . basename($images[0]);
+	$preview = THUMB_URL .'/'. $name . '/' . basename($images[0]);
     }
 ?>
 
@@ -302,6 +308,7 @@ $metaFile = $folderPath . '/meta.json';
 
 $meta = [
     'folder_comment' => '',
+    'start_image'    => null,
     'images' => []
 ];
 
@@ -314,15 +321,36 @@ if (file_exists($metaFile)) {
     }
 }
 
+// Cancella una foto
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_image'])) {
+
+    $imageToDelete = basename($_POST['delete_image']);
+
+    $imagePath = $folderPath . '/' . $imageToDelete;
+    $thumbPath = THUMB_DIR . '/' . $folderName . '/' . $imageToDelete;
+
+    if (file_exists($imagePath)) {
+        unlink($imagePath);
+    }
+
+    if (file_exists($thumbPath)) {
+        unlink($thumbPath);
+    }
+
+    header("Location: " . $_SERVER['REQUEST_URI']);
+    exit;
+}
+
+
+// Aggiorna i meta
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $meta['folder_comment'] = $_POST['folder_comment'] ?? '';
-
+    $meta['start_image'] = $_POST['start_image'] ?? null;
     foreach ($images as $img) {
         $filename = basename($img);
         $meta['images'][$filename] = $_POST['images'][$filename] ?? '';
     }
-
     file_put_contents(
         $metaFile,
         json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
@@ -341,18 +369,111 @@ if (!is_dir($thumbFolder)) mkdir($thumbFolder, 0755, true);
 <head>
 <meta charset="UTF-8">
 <title>Admin 360 - <?= sanitize($folderName) ?></title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
 <style>
 body { font-family: Arial; background:#111; color:#fff; padding:20px; }
 input, textarea { width:100%; padding:8px; background:#222; border:1px solid #444; color:#fff; }
 button { padding:10px 20px; background:#444; color:#fff; border:none; cursor:pointer; margin-top:20px; }
-.image-row { display:flex; flex-direction:column; gap:10px; margin-bottom:30px; background:#1a1a1a; padding:15px; border-radius:8px; }
-.image-row img {
-    width:100%;
-    max-width:600px;
+
+.start-selector {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
-.image-info { width:100%; }
+
+.start-selector input[type="radio"] {
+    accent-color: #28a745;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.start-selector label {
+    cursor: pointer;
+    font-size: 14px;
+    color: #ccc;
+}
+
+.start-selector input[type="radio"]:checked + label {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.image-info { 
+	width:100%; 
+    max-width: 1000px;
+}
 a { color:#0af; text-decoration:none; }
 a:hover { text-decoration:underline; }
+
+.image-info {
+    flex: 1;
+}
+
+.image-info input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 6px;
+    background: #111;
+    border: 1px solid #333;
+    color: #fff;
+    border-radius: 4px;
+}
+
+.button-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.inline-form {
+    margin: 0;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.image-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-bottom: 40px;
+    padding: 25px;
+    background: #1a1a1a;
+    border-radius: 10px;
+    border: 1px solid #333;
+}
+
+.image-row img {
+    width: 100%;
+    max-width: 1000px;
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+}
+
+.preview-360 {
+    width: 100%;
+    max-width: 500px;
+    aspect-ratio: 2 / 1;
+    border: 1px solid #444;
+    background: #000;
+    border-radius: 8px;
+}
+
 </style>
 </head>
 <body>
@@ -362,9 +483,9 @@ a:hover { text-decoration:underline; }
 <h1><?= sanitize($folderName) ?></h1>
 
 <form method="post">
-
-<h3>Commento cartella</h3>
+<h3>Titolo cartella</h3>
 <textarea name="folder_comment" rows="3"><?= sanitize($meta['folder_comment']) ?></textarea>
+<button type="submit" class="btn btn-success">💾 Salva</button>
 
 <h3>Immagini</h3>
 
@@ -382,27 +503,78 @@ a:hover { text-decoration:underline; }
 ?>
 
 <div class="image-row">
-    <img src="<?= $relativeThumb ?>">
+	<div class="preview-360"
+     	id="preview_<?= sanitize($filename) ?>"
+     	data-image="<?= $relativeThumb ?>">
+	</div>
     <div class="image-info">
-        <strong><?= sanitize($filename) ?></strong>
-
+        <span><?= sanitize($filename) ?></span>
         <input type="text"
                name="images[<?= sanitize($filename) ?>]"
                value="<?= sanitize($desc) ?>"
                placeholder="Descrizione immagine">
+	<div class="button-row">
+<div class="start-selector">
+    <input type="radio"
+           id="start_<?= sanitize($filename) ?>"
+           name="start_image"
+           value="<?= sanitize($filename) ?>"
+           <?= ($meta['start_image'] ?? '') === $filename ? 'checked' : '' ?>>
 
-        <div style="margin-top:8px;">
-            <a href="admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=<?= urlencode($filename) ?>"
-               style="color:#0af;">
-                🟢 Modifica Hotspot
-            </a>
-        </div>
+    <label for="start_<?= sanitize($filename) ?>">
+        ⭐ Immagine iniziale
+    </label>
+</div>
+    <a class="btn btn-primary"
+       href="admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=<?= urlencode($filename) ?>">
+       🟢 Gestione Hotspot
+    </a>
+    <button type="submit"
+        name="delete_image"
+        value="<?= htmlspecialchars($filename) ?>"
+        class="btn btn-danger"
+        onclick="return confirm('Eliminare questa foto?');">
+    ❌ Elimina
+</button>
+
+</div>
     </div>
 </div>
 <?php endforeach; ?>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
 
-<button type="submit">Salva</button>
+    <?php foreach ($images as $img):
+        $filename = basename($img);
+        $relativeImage = IMAGES_URL.'/' . $folderName . '/' . $filename;
+	$relativeThumb = THUMB_URL.'/' . $folderName . '/' . $filename;
+    ?>
 
+    pannellum.viewer("preview_<?= sanitize($filename) ?>", {
+        type: "equirectangular",
+	preview: "<?= $relativeThumb ?>",      // thumbnail statica
+        panorama: "<?= $relativeImage ?>",
+        autoLoad: false,
+        showControls: false,
+        compass: false,
+        keyboardZoom: false,
+        mouseZoom: false,
+        pitch: 0,
+        yaw: 0,
+        hfov: 130,
+        hotSpots: [],
+	strings: {
+        	loadButtonLabel: "Clicca",
+        	loadingLabel: "Caricamento in corso..."
+    	},
+
+    });
+
+    <?php endforeach; ?>
+
+});
+</script>
+<button type="submit" class="btn btn-success">💾 Salva</button>
 </form>
 <script>
 function copyToClipboard(text) {
