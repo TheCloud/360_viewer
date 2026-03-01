@@ -9,7 +9,7 @@ function isValidToken($folder, $token) {
     return hash_equals(generateToken($folder), $token ?? '');
 }
 
-$baseDir = IMAGES_DIR;
+$baseDir      = IMAGES_DIR;
 $thumbBaseDir = THUMB_DIR;
 
 $openFolder = $_GET['open'] ?? null;
@@ -37,7 +37,7 @@ if (!is_dir($folderPath)) {
 }
 
 /* =========================
-   IMMAGINI
+   IMMAGINI + META
 ========================= */
 
 $images = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
@@ -76,46 +76,116 @@ if (!empty($meta['start_image']) &&
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
 <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
-
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <style>
 body { background:#111; color:#fff; }
-.thumb { width:300px; height:150px; background-size:cover; background-position:center; cursor:pointer; border:2px solid #333; }
-.thumb:hover { border-color:#fff; }
 
 .thumb-wrapper {
     position: relative;
     width: 300px;
 }
 
-.pano-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: rgba(0,0,0,0.75);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 6px;
-    backdrop-filter: blur(4px);
+.thumb {
+    width:300px;
+    height:150px;
+    background-size:cover;
+    background-position:center;
+    border:2px solid #333;
+    border-radius:6px;
+    cursor:pointer;
 }
+.thumb:hover { border-color:#fff; }
+
 .pano-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: rgba(0,0,0,0.75);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 6px;
-    backdrop-filter: blur(4px);
+    position:absolute;
+    top:8px;
+    right:8px;
+    background:rgba(0,0,0,0.75);
+    color:#fff;
+    font-size:13px;
+    padding:4px 8px;
+    border-radius:6px;
 }
 
-#viewerOverlay { position:fixed; inset:0; background:#000; display:none; z-index:9999; }
+#viewerOverlay {
+    position:fixed;
+    inset:0;
+    background:#000;
+    display:none;
+    z-index:9999;
+}
+
 #panorama { position:absolute; inset:0; }
-.closeBtn { position:absolute; top:20px; right:30px; font-size:28px; cursor:pointer; z-index:10001; }
-.viewer-caption { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.6); padding:10px 20px; border-radius:6px; }
+
+.closeBtn {
+    position:absolute;
+    top:20px;
+    right:30px;
+    font-size:28px;
+    cursor:pointer;
+    z-index:10001;
+}
+
+#shareViewBtn {
+    position:absolute;
+    top:20px;
+    left:30px;
+    z-index:10001;
+}
+
+.viewer-caption {
+    position:absolute;
+    bottom:30px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.6);
+    padding:10px 20px;
+    border-radius:6px;
+}
+
+.custom-hotspot {
+    width:18px;
+    height:18px;
+    background:#ff3b3b;
+    border-radius:50%;
+    border:2px solid #fff;
+}
+
+.link-hotspot {
+    width: 34px !important;
+    height: 34px !important;
+    display: block !important;
+    position: absolute !important;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.link-hotspot::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(255,180,0,0.95) 20%,
+        rgba(255,120,0,0.8) 50%,
+        rgba(255,60,0,0.5) 75%,
+        transparent 100%);
+    box-shadow: 0 0 14px rgba(255,120,0,0.9);
+}
+
+.link-hotspot::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -70%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 14px solid white;
+    pointer-events: none;
+}
 </style>
 </head>
 <body>
@@ -130,13 +200,11 @@ body { background:#111; color:#fff; }
     $filename = basename($img);
     $relativeImage = 'images/' . $openFolder . '/' . $filename;
     $relativeThumb = 'thumbnails/' . $openFolder . '/' . $filename;
-
-    $description = $meta['images'][$filename] ?? '';
+    $description   = $meta['images'][$filename] ?? '';
+    $isPanorama    = $meta['panoramas'][$filename] ?? false;
 ?>
 
-<?php $isPanorama = $meta['panoramas'][$filename] ?? false; ?>
-
-<div style="width:300px; position:relative;">
+<div class="thumb-wrapper">
 
     <div class="thumb"
          style="background-image:url('<?= $relativeThumb ?>')"
@@ -148,7 +216,7 @@ body { background:#111; color:#fff; }
     </div>
 
     <?php if ($isPanorama): ?>
-        <div class="pano-badge">360°</div>
+        <div class="pano-badge"><i class="bi bi-globe"></i></div>
     <?php endif; ?>
 
 </div>
@@ -160,6 +228,7 @@ body { background:#111; color:#fff; }
 
 <div id="viewerOverlay">
 <div class="closeBtn text-white" onclick="closeViewer()">✕</div>
+<button id="shareViewBtn" class="btn btn-sm btn-outline-light">🔗 Condividi vista</button>
 <div id="panorama"></div>
 <div id="viewerCaption" class="viewer-caption" style="display:none;"></div>
 </div>
@@ -173,6 +242,7 @@ let imageHotspotsData = <?= json_encode($meta['hotspots'] ?? []) ?>;
 let panoramaFlags     = <?= json_encode($meta['panoramas'] ?? []) ?>;
 
 let autoOpenFolder = <?= json_encode($openFolder) ?>;
+let autoOpenImage  = <?= json_encode($openImage) ?>;
 let autoToken      = <?= json_encode($token) ?>;
 
 let autoYaw   = <?= json_encode($yawParam) ?>;
@@ -196,30 +266,61 @@ function openViewer(imagePath, description, fileName) {
         document.getElementById('panorama').innerHTML =
             '<img src="' + imagePath + '" style="width:100%; height:100%; object-fit:contain;">';
 
-    } else {
-
-        const previewPath = imagePath.replace('/images/', '/thumbnails/');
-
-        let config = {
-            type: 'equirectangular',
-            panorama: imagePath,
-            preview: previewPath,
-            autoLoad: true,
-            showControls: true,
-            hotSpots: (imageHotspotsData[fileName] || []).map(h => ({
-                pitch: parseFloat(h.pitch),
-                yaw: parseFloat(h.yaw),
-                type: 'info',
-                text: h.text || ''
-            }))
-        };
-
-        if (autoYaw)   config.yaw   = parseFloat(autoYaw);
-        if (autoPitch) config.pitch = parseFloat(autoPitch);
-        if (autoHfov)  config.hfov  = parseFloat(autoHfov);
-
-        viewer = pannellum.viewer('panorama', config);
+        return;
     }
+
+    const previewPath = imagePath.replace('/images/', '/thumbnails/');
+
+    viewer = pannellum.viewer('panorama', {
+        type: 'equirectangular',
+        panorama: imagePath,
+        preview: previewPath,
+        autoLoad: true,
+        showControls: true,
+        yaw: autoYaw ? parseFloat(autoYaw) : 0,
+        pitch: autoPitch ? parseFloat(autoPitch) : 0,
+        hfov: autoHfov ? parseFloat(autoHfov) : 130,
+        hotSpots: (imageHotspotsData[fileName] || []).map(h => {
+
+            const pitch = parseFloat(h.pitch);
+            const yaw   = parseFloat(h.yaw);
+
+            if (h.type === 'link' && h.target) {
+                return {
+                    pitch, yaw,
+                    type: 'info',
+                    text: h.text || '',
+                    cssClass: 'link-hotspot',
+                    clickHandlerFunc: function() {
+                        loadScene(h.target);
+                    }
+                };
+            }
+
+            return {
+                pitch, yaw,
+                type: 'info',
+                text: h.text || '',
+                cssClass: 'custom-hotspot'
+            };
+
+        })
+    });
+
+    viewer.on('load', function () {
+
+        const hs = imageHotspotsData?.[fileName] || [];
+
+        if (!autoYaw && hs.length > 0) {
+            viewer.lookAt(
+                parseFloat(hs[0].pitch),
+                parseFloat(hs[0].yaw),
+                130,
+                800
+            );
+        }
+
+    });
 
     const caption = document.getElementById('viewerCaption');
     if (description) {
@@ -228,6 +329,24 @@ function openViewer(imagePath, description, fileName) {
     } else {
         caption.style.display = 'none';
     }
+}
+
+function loadScene(targetFile) {
+
+    openViewer(
+        'images/' + autoOpenFolder + '/' + targetFile,
+        '',
+        targetFile
+    );
+
+    const newUrl =
+        window.location.origin +
+        window.location.pathname +
+        '?open=' + encodeURIComponent(autoOpenFolder) +
+        '&token=' + encodeURIComponent(autoToken) +
+        '&img=' + encodeURIComponent(targetFile);
+
+    history.replaceState(null, '', newUrl);
 }
 
 function closeViewer() {
@@ -242,18 +361,20 @@ function closeViewer() {
     document.getElementById('panorama').innerHTML = '';
 }
 
-const defaultStartImage = <?= json_encode($startImage) ?>;
-
 document.addEventListener('DOMContentLoaded', function() {
 
-    if (defaultStartImage) {
-        setTimeout(function() {
-            openViewer(
-                'images/' + autoOpenFolder + '/' + defaultStartImage,
-                '',
-                defaultStartImage
-            );
-        }, 400);
+    if (autoOpenImage) {
+        openViewer(
+            'images/' + autoOpenFolder + '/' + autoOpenImage,
+            '',
+            autoOpenImage
+        );
+    } else if (<?= json_encode($startImage) ?>) {
+        openViewer(
+            'images/' + autoOpenFolder + '/' + <?= json_encode($startImage) ?>,
+            '',
+            <?= json_encode($startImage) ?>
+        );
     }
 
 });

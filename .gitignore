@@ -2,3 +2,4 @@ images/*
 thumbnails/*
 .ht*
 config.php
+admin/debug.log

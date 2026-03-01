@@ -556,10 +556,21 @@ a:hover { text-decoration:underline; }
 ?>
 
 <div class="image-row">
-	<div class="preview-360"
-     	id="preview_<?= sanitize($filename) ?>"
-     	data-image="<?= $relativeThumb ?>">
-	</div>
+<?php $isPanorama = $meta['panoramas'][$filename] ?? true; ?>
+
+<?php if ($isPanorama): ?>
+
+    <div class="preview-360"
+         id="preview_<?= sanitize($filename) ?>">
+    </div>
+
+<?php else: ?>
+
+    <img src="<?= $relativeThumb ?>"
+         class="preview-360"
+         style="object-fit:cover;">
+
+<?php endif; ?>
     <div class="image-info">
         <span><?= sanitize($filename) ?></span>
         <input type="text"
