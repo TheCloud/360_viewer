@@ -81,6 +81,37 @@ if (!empty($meta['start_image']) &&
 body { background:#111; color:#fff; }
 .thumb { width:300px; height:150px; background-size:cover; background-position:center; cursor:pointer; border:2px solid #333; }
 .thumb:hover { border-color:#fff; }
+
+.thumb-wrapper {
+    position: relative;
+    width: 300px;
+}
+
+.pano-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+}
+.pano-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+}
+
 #viewerOverlay { position:fixed; inset:0; background:#000; display:none; z-index:9999; }
 #panorama { position:absolute; inset:0; }
 .closeBtn { position:absolute; top:20px; right:30px; font-size:28px; cursor:pointer; z-index:10001; }
@@ -103,7 +134,10 @@ body { background:#111; color:#fff; }
     $description = $meta['images'][$filename] ?? '';
 ?>
 
-<div style="width:300px;">
+<?php $isPanorama = $meta['panoramas'][$filename] ?? false; ?>
+
+<div style="width:300px; position:relative;">
+
     <div class="thumb"
          style="background-image:url('<?= $relativeThumb ?>')"
          onclick="openViewer(
@@ -112,6 +146,11 @@ body { background:#111; color:#fff; }
             '<?= $filename ?>'
          )">
     </div>
+
+    <?php if ($isPanorama): ?>
+        <div class="pano-badge">360°</div>
+    <?php endif; ?>
+
 </div>
 
 <?php endforeach; ?>
