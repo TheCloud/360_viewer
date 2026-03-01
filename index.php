@@ -14,6 +14,7 @@ $thumbBaseDir = THUMB_DIR;
 
 $openFolder = $_GET['open'] ?? null;
 $openImage  = $_GET['img'] ?? null;
+$startImage = null;
 $token      = $_GET['token'] ?? null;
 
 $yawParam   = $_GET['yaw'] ?? null;
@@ -338,27 +339,26 @@ body { background:#111; color:#fff; }
     $description   = $meta['images'][$filename] ?? '';
     $isPanorama    = $meta['panoramas'][$filename] ?? false;
     $isStart = ($filename === $startImage);
-$dataOra = null;
+    $dataOra = null;
 
-if (function_exists('exif_read_data')) {
+    $dataOra = null;
 
-    $exif = @exif_read_data($img);
+if (!empty($meta['images_meta'][$filename]['datetime'])) {
 
-    if (!empty($exif['DateTimeOriginal'])) {
+    $dt = DateTime::createFromFormat(
+        'Y-m-d H:i:s',
+        $meta['images_meta'][$filename]['datetime']
+    );
 
-        $raw = $exif['DateTimeOriginal']; // formato: 2026:03:01 14:37:22
-        $dt = DateTime::createFromFormat('Y:m:d H:i:s', $raw);
-
-        if ($dt) {
-            $dataOra = $dt->format('d/m/Y H:i');
-        }
+    if ($dt) {
+        $dataOra = $dt->format('d/m/Y H:i');
     }
 }
 
-// fallback se EXIF assente
 if (!$dataOra) {
     $dataOra = date('d/m/Y H:i', filemtime($img));
 }
+
 
 ?>
 

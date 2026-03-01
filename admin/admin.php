@@ -322,8 +322,16 @@ if (file_exists($metaFile)) {
 }
 
 /* =====================================================
-   AUTO-DETECT PANORAMA SE MANCA
+   AUTO-DETECT PANORAMA + EXIF DATA (LAZY)
 ===================================================== */
+
+if (!isset($meta['panoramas'])) {
+    $meta['panoramas'] = [];
+}
+
+if (!isset($meta['images_meta'])) {
+    $meta['images_meta'] = [];
+}
 
 $needsSave = false;
 
@@ -331,38 +339,87 @@ foreach ($images as $img) {
 
     $filename = basename($img);
 
+    /* -----------------------
+       PANORAMA DETECTION
+    ----------------------- */
+
     if (!isset($meta['panoramas'][$filename])) {
 
-        $is360 = true; // default TRUE come hai richiesto
+        $is360 = false;
 
-        // Prova EXIF/XMP
+        // EXIF / XMP scan
         if (function_exists('exif_read_data')) {
-
-            $exif = @exif_read_data($img, 0, true);
-
-            if ($exif !== false && !empty($exif['XMP'])) {
-
-                $xmp = implode(" ", $exif['XMP']);
-
-                if (
-                    strpos($xmp, 'FullPanoWidthPixels') !== false &&
-                    strpos($xmp, 'FullPanoHeightPixels') !== false
-                ) {
+            $exif = @exif_read_data($img);
+            if ($exif !== false) {
+                if (!empty($exif['UsePanoramaViewer']) && $exif['UsePanoramaViewer'] == 1) {
                     $is360 = true;
                 }
             }
         }
 
-        // Fallback proporzione (2:1)
-        $size = @getimagesize($img);
-        if ($size) {
-            $ratio = $size[0] / $size[1];
-            if ($ratio < 1.95 || $ratio > 2.05) {
-                $is360 = false;
+        // raw GPano fallback
+        if (!$is360) {
+            $raw = @file_get_contents($img);
+            if ($raw !== false) {
+                if (
+                    strpos($raw, 'GPano:ProjectionType') !== false &&
+                    strpos($raw, 'equirectangular') !== false
+                ) {
+                    $is360 = true;
+                }
+                if (strpos($raw, 'FullPanoWidthPixels') !== false) {
+                    $is360 = true;
+                }
+            }
+        }
+
+        // fallback ratio 2:1
+        if (!$is360) {
+            $size = @getimagesize($img);
+            if ($size) {
+                $ratio = $size[0] / $size[1];
+                if ($ratio > 1.95 && $ratio < 2.05) {
+                    $is360 = true;
+                }
             }
         }
 
         $meta['panoramas'][$filename] = $is360;
+        $needsSave = true;
+    }
+
+    /* -----------------------
+       DATA EXIF
+    ----------------------- */
+
+    if (!isset($meta['images_meta'][$filename])) {
+
+        $timestamp = null;
+        $datetime  = null;
+
+        if (function_exists('exif_read_data')) {
+            $exif = @exif_read_data($img);
+            if ($exif !== false && !empty($exif['DateTimeOriginal'])) {
+
+                $raw = $exif['DateTimeOriginal'];
+                $formatted = str_replace(':', '-', substr($raw, 0, 10)) . substr($raw, 10);
+
+                $timestamp = strtotime($formatted);
+                $datetime  = date('Y-m-d H:i:s', $timestamp);
+            }
+        }
+
+        // fallback filemtime
+        if (!$timestamp) {
+            $timestamp = filemtime($img);
+            $datetime  = date('Y-m-d H:i:s', $timestamp);
+        }
+
+        $meta['images_meta'][$filename] = [
+            'timestamp' => $timestamp,
+            'datetime'  => $datetime
+        ];
+
         $needsSave = true;
     }
 }
