@@ -26,7 +26,48 @@ $hfovParam  = $_GET['hfov'] ?? null;
 
 if (!$openFolder || !isValidToken($openFolder, $token)) {
     http_response_code(403);
-    exit("403 Accesso riservato");
+        ?>
+    <!DOCTYPE html>
+    <html lang="it">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Accesso riservato</title>
+        <style>
+            body {
+                margin:0;
+                background:#000;
+                color:#fff;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                height:100vh;
+                font-family:Arial, sans-serif;
+                text-align:center;
+            }
+            .box { max-width:600px; }
+            .code {
+                font-size:80px;
+                font-weight:bold;
+                color:#ff3b3b;
+                margin-bottom:20px;
+            }
+            .msg { font-size:22px; margin-bottom:15px; }
+            .sub { font-size:16px; color:#aaa; }
+        </style>
+    </head>
+    <body>
+        <div class="box">
+            <div class="code">403</div>
+            <div class="msg">Accesso riservato</div>
+            <div class="sub">
+                Questo contenuto è protetto.<br>
+                Il link utilizzato non è valido o è scaduto.
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
 }
 
 $folderPath = $baseDir . '/' . basename($openFolder);
