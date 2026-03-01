@@ -16,27 +16,6 @@ function sanitize($str) {
     return preg_replace('/[^a-zA-Z0-9-_]/', '', $str);
 }
 
-function getPhpUploadLimitBytes() {
-
-    $upload = ini_get('upload_max_filesize');
-    $post   = ini_get('post_max_size');
-
-    $toBytes = function($val) {
-        $val = trim($val);
-        $unit = strtolower(substr($val, -1));
-        $num = (int)$val;
-
-        switch($unit) {
-            case 'g': return $num * 1024 * 1024 * 1024;
-            case 'm': return $num * 1024 * 1024;
-            case 'k': return $num * 1024;
-            default:  return (int)$val;
-        }
-    };
-
-    return min($toBytes($upload), $toBytes($post));
-}
-
 function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
 
     if (!extension_loaded('gd')) return false;
@@ -47,18 +26,26 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
     list($width, $height) = $info;
 
     $ratio = $height / $width;
-    $newWidth = $maxWidth;
+    $newWidth  = $maxWidth;
     $newHeight = $maxWidth * $ratio;
 
     $src = imagecreatefromjpeg($sourcePath);
+    if (!$src) {
+        file_put_contents(__DIR__.'/debug.log', "GD FAIL\n", FILE_APPEND);
+        return false;
+    }
 
-if (!$src) {
-    file_put_contents(__DIR__.'/debug.log', "GD FAIL\n", FILE_APPEND);
-    echo json_encode(['success' => true]);
-    exit;
-}
     $thumb = imagecreatetruecolor($newWidth, $newHeight);
-    imagecopyresampled($thumb, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+    imagecopyresampled(
+        $thumb,
+        $src,
+        0, 0,
+        0, 0,
+        $newWidth, $newHeight,
+        $width, $height
+    );
+
     imagejpeg($thumb, $thumbPath, 80);
 
     imagedestroy($src);
@@ -66,6 +53,47 @@ if (!$src) {
 
     return true;
 }
+
+/* =========================
+   RILEVA PANORAMICA 360
+========================= */
+
+function isPanorama360($filePath) {
+
+    // EXIF base
+    if (function_exists('exif_read_data')) {
+        $exif = @exif_read_data($filePath);
+        if ($exif !== false) {
+            if (!empty($exif['UsePanoramaViewer']) && $exif['UsePanoramaViewer'] == 1) {
+                return true;
+            }
+        }
+    }
+
+    // XMP GPano
+    $data = file_get_contents($filePath);
+    if ($data !== false) {
+
+        if (strpos($data, 'GPano:ProjectionType') !== false &&
+            strpos($data, 'equirectangular') !== false) {
+            return true;
+        }
+
+        if (strpos($data, 'UsePanoramaViewer') !== false) {
+            return true;
+        }
+
+        if (strpos($data, 'FullPanoWidthPixels') !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/* =========================
+   VALIDAZIONE REQUEST
+========================= */
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(403);
@@ -78,10 +106,10 @@ if (!$folderName) {
     exit;
 }
 
-$folderPath = $baseDir . '/' . $folderName;
+$folderPath  = $baseDir . '/' . $folderName;
 $thumbFolder = $thumbBaseDir . '/' . $folderName;
 
-if (!is_dir($folderPath)) mkdir($folderPath, 0755, true);
+if (!is_dir($folderPath))  mkdir($folderPath, 0755, true);
 if (!is_dir($thumbFolder)) mkdir($thumbFolder, 0755, true);
 
 if (empty($_FILES['image'])) {
@@ -96,10 +124,14 @@ if ($_FILES['image']['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
+/* =========================
+   VALIDAZIONE MIME
+========================= */
+
 $originalName = basename($_FILES['image']['name']);
 
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
-$mime = finfo_file($finfo, $_FILES['image']['tmp_name']);
+$mime  = finfo_file($finfo, $_FILES['image']['tmp_name']);
 finfo_close($finfo);
 
 if ($mime !== 'image/jpeg') {
@@ -108,11 +140,15 @@ if ($mime !== 'image/jpeg') {
     exit;
 }
 
+/* =========================
+   SALVATAGGIO FILE
+========================= */
+
 $targetPath = $folderPath . '/' . $originalName;
 
 if (file_exists($targetPath)) {
     $originalName = time() . '_' . $originalName;
-    $targetPath = $folderPath . '/' . $originalName;
+    $targetPath   = $folderPath . '/' . $originalName;
 }
 
 if (!move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)) {
@@ -121,13 +157,55 @@ if (!move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)) {
     exit;
 }
 
+/* =========================
+   CREA THUMBNAIL
+========================= */
+
 $thumbPath = $thumbFolder . '/' . $originalName;
 createThumbnail($targetPath, $thumbPath, 800);
 
+/* =========================
+   RILEVA 360
+========================= */
+
+$is360 = isPanorama360($targetPath);
+
+/* =========================
+   AGGIORNA META.JSON
+========================= */
+
+$metaFile = $folderPath . '/meta.json';
+
+$meta = [
+    'folder_comment' => '',
+    'start_image'    => null,
+    'images'         => [],
+    'hotspots'       => [],
+    'panoramas'      => []
+];
+
+if (file_exists($metaFile)) {
+    $raw = file_get_contents($metaFile);
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        $meta = array_merge($meta, $decoded);
+    }
+}
+
+// salva flag panorama
+if (!isset($meta['panoramas'])) {
+    $meta['panoramas'] = [];
+}
+
+$meta['panoramas'][$originalName] = $is360;
+
 file_put_contents(
-    __DIR__ . '/debug.log',$thumbPath,FILE_APPEND
+    $metaFile,
+    json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
 );
 
+/* =========================
+   RISPOSTA
+========================= */
 
 echo "OK";
-
