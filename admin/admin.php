@@ -305,11 +305,11 @@ if (!is_dir($folderPath)) {
 $images = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
 $metaFile = $folderPath . '/meta.json';
 
-
 $meta = [
     'folder_comment' => '',
     'start_image'    => null,
-    'images' => []
+    'images'         => [],
+    'panoramas'      => []
 ];
 
 if (file_exists($metaFile)) {
@@ -319,6 +319,59 @@ if (file_exists($metaFile)) {
     if (is_array($decoded)) {
         $meta = array_merge($meta, $decoded);
     }
+}
+
+/* =====================================================
+   AUTO-DETECT PANORAMA SE MANCA
+===================================================== */
+
+$needsSave = false;
+
+foreach ($images as $img) {
+
+    $filename = basename($img);
+
+    if (!isset($meta['panoramas'][$filename])) {
+
+        $is360 = true; // default TRUE come hai richiesto
+
+        // Prova EXIF/XMP
+        if (function_exists('exif_read_data')) {
+
+            $exif = @exif_read_data($img, 0, true);
+
+            if ($exif !== false && !empty($exif['XMP'])) {
+
+                $xmp = implode(" ", $exif['XMP']);
+
+                if (
+                    strpos($xmp, 'FullPanoWidthPixels') !== false &&
+                    strpos($xmp, 'FullPanoHeightPixels') !== false
+                ) {
+                    $is360 = true;
+                }
+            }
+        }
+
+        // Fallback proporzione (2:1)
+        $size = @getimagesize($img);
+        if ($size) {
+            $ratio = $size[0] / $size[1];
+            if ($ratio < 1.95 || $ratio > 2.05) {
+                $is360 = false;
+            }
+        }
+
+        $meta['panoramas'][$filename] = $is360;
+        $needsSave = true;
+    }
+}
+
+if ($needsSave) {
+    file_put_contents(
+        $metaFile,
+        json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+    );
 }
 
 // Cancella una foto
