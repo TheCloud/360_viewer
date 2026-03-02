@@ -115,6 +115,52 @@ body { background:#111; color:#fff; }
     object-fit: cover;
     border-bottom: 1px solid #333;
 }
+.pano-admin-preview {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid #333;
+    transition: transform 0.4s ease, filter 0.4s ease;
+    overflow: hidden;
+}
+
+.pano-admin-preview::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center,
+        transparent 60%,
+        rgba(0,0,0,0.4) 100%);
+    pointer-events: none;
+}
+
+/* Hover elegante */
+.pano-admin-preview:hover {
+    transform: scale(1.03);
+    filter: brightness(1.1);
+}
+
+/* Solo per panorami */
+.pano-admin-preview.is-pano {
+    background-size: 120% auto;  /* leggero crop centrale */
+    background-position: center;
+}
+
+/* Overlay icona */
+.pano-overlay {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0,0,0,0.7);
+    padding: 6px 8px;
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+    font-size: 18px;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.6);
+}
 </style>
 
 </head>
@@ -167,6 +213,7 @@ if ($count > 0) {
         }
     }
 
+    $isPanorama = $meta['panoramas'][$previewImage] ?? true;
     $preview = THUMB_URL . '/' . $name . '/' . $previewImage;
 }
 
@@ -176,7 +223,16 @@ if ($count > 0) {
     <div class="card text-white h-100">
 
         <?php if ($preview): ?>
-            <img src="<?= $preview ?>" class="card-img-top img-fluid">
+<div class="pano-admin-preview <?= $isPanorama ? 'is-pano' : '' ?>"
+     style="background-image:url('<?= $preview ?>')">
+
+    <?php if ($isPanorama): ?>
+        <div class="pano-overlay">
+            <i class="bi bi-globe2"></i>
+        </div>
+    <?php endif; ?>
+
+</div>
         <?php endif; ?>
 
         <div class="card-body d-flex flex-column">
