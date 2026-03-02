@@ -499,6 +499,43 @@ function openViewer(imagePath, description, fileName) {
     }
 }
 
+document.getElementById('shareViewBtn').addEventListener('click', function() {
+
+    if (!viewer || !currentImageName) return;
+
+    const yaw   = viewer.getYaw().toFixed(2);
+    const pitch = viewer.getPitch().toFixed(2);
+    const hfov  = viewer.getHfov().toFixed(2);
+
+    const shareUrl =
+        window.location.origin +
+        window.location.pathname +
+        '?open=' + encodeURIComponent(autoOpenFolder) +
+        '&token=' + encodeURIComponent(autoToken) +
+        '&img=' + encodeURIComponent(currentImageName) +
+        '&yaw=' + yaw +
+        '&pitch=' + pitch +
+        '&hfov=' + hfov;
+
+    if (navigator.share) {
+        navigator.share({
+            title: 'Foto 360',
+            url: shareUrl
+        }).catch(()=>{});
+    } else {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareUrl).catch(()=>{});
+        } else {
+            const tmp = document.createElement('input');
+            tmp.value = shareUrl;
+            document.body.appendChild(tmp);
+            tmp.select();
+            document.execCommand('copy');
+            document.body.removeChild(tmp);
+        }
+    }
+});
+
 function loadScene(targetFile) {
 
     openViewer(
