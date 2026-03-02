@@ -159,20 +159,6 @@ exit;}
    IMMAGINI + META
 ========================= */
 
-$images = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
-if ($startImage) {
-
-    usort($images, function($a, $b) use ($startImage) {
-
-        $fa = basename($a);
-        $fb = basename($b);
-
-        if ($fa === $startImage) return -1;
-        if ($fb === $startImage) return 1;
-
-        return 0;
-    });
-}
 $meta = [
     'folder_comment' => '',
     'start_image'    => null,
@@ -194,6 +180,20 @@ $startImage = null;
 if (!empty($meta['start_image']) &&
     file_exists($folderPath . '/' . $meta['start_image'])) {
     $startImage = $meta['start_image'];
+}
+$images = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
+if ($startImage) {
+
+    usort($images, function($a, $b) use ($startImage) {
+
+        $fa = basename($a);
+        $fb = basename($b);
+
+        if ($fa === $startImage) return -1;
+        if ($fb === $startImage) return 1;
+
+        return 0;
+    });
 }
 
 ?>

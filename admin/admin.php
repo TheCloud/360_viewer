@@ -88,6 +88,10 @@ function createThumbnail($sourcePath, $thumbPath, $maxWidth = 800) {
 }
 
 $folders = array_filter(glob($baseDir . '/*'), 'is_dir');
+// Ordina per data di modifica inversa
+usort($folders, function($a, $b) {
+    return filemtime($b) <=> filemtime($a);
+});
 $currentFolder = $_GET['folder'] ?? null;
 
 /* ===================================================== */
@@ -102,15 +106,15 @@ if (!$currentFolder) {
 <meta charset="UTF-8">
 <title>Admin 360</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <style>
 body { background:#111; color:#fff; }
 .card { background:#1a1a1a; border:1px solid #333; }
 .card img {
-    aspect-ratio: 2 / 1;
+    aspect-ratio: 16 / 9;
     object-fit: cover;
+    border-bottom: 1px solid #333;
 }
-
-
 </style>
 
 </head>
@@ -140,7 +144,6 @@ body { background:#111; color:#fff; }
         $raw = file_get_contents($metaFile);
         $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
         $decoded = json_decode($raw, true);
-
         if (is_array($decoded)) {
             $folderComment = $decoded['folder_comment'] ?? '';
             if (!empty($folderComment)) {
@@ -149,10 +152,24 @@ body { background:#111; color:#fff; }
         }
     }
 
-    $preview = null;
-    if ($count > 0) {
-	$preview = THUMB_URL .'/'. $name . '/' . basename($images[0]);
+$preview = null;
+
+if ($count > 0) {
+
+    $previewImage = basename($images[0]); // fallback
+
+    if ($hasMeta && !empty($decoded['start_image'])) {
+
+        $start = $decoded['start_image'];
+
+        if (file_exists($folder . '/' . $start)) {
+            $previewImage = $start;
+        }
     }
+
+    $preview = THUMB_URL . '/' . $name . '/' . $previewImage;
+}
+
 ?>
 
 <div class="col-12 col-sm-6 col-lg-4">
@@ -170,7 +187,7 @@ body { background:#111; color:#fff; }
 
 <?php if ($folderComment): ?>
     <div class="text-secondary small">
-        <?= sanitize($name) ?>
+        Cartella: <?= sanitize($name) ?>
     </div>
 <?php endif; ?>
 
@@ -186,10 +203,10 @@ body { background:#111; color:#fff; }
 
             <?php else: ?>
                 <p class="card-text text-secondary small">
-                    <?= sanitize($folderComment) ?>
+                    Ultimo aggiornamento: <?= date("d-m-Y",filemtime($folder)) ?>
                 </p>
             <?php endif; ?>
-
+</p>
             <p class="card-text small"><?= $count ?> foto</p>
 
             <div class="mt-auto">
@@ -284,7 +301,6 @@ function showCopied(button) {
     }, 1500);
 }
 </script>
-
 </body>
 </html>
 <?php
