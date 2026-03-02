@@ -120,7 +120,7 @@ body { background:#111; color:#fff; }
 </head>
 <body class="container py-4">
 
-<h1 class="mb-4">Gestione Cartelle 360</h1>
+<h1 class="mb-4">Gestione Cartelle 360&deg;</h1>
 <div class="mb-3">
     <a href="admin_upload.php" class="btn btn-success">
         ➕ Nuova cartella / Upload
