@@ -2,6 +2,13 @@
 
 require_once __DIR__ . '/../config.php';
 
+$currentFolder = $_GET['folder'] ?? null;
+
+if ($currentFolder) {
+    header("Location: admin_edit.php?folder=" . urlencode($currentFolder));
+    exit;
+}
+
 $baseDir = IMAGES_DIR;
 $thumbBaseDir = THUMB_DIR;
 

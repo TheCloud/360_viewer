@@ -236,13 +236,20 @@ body { background:#111; color:#fff; }
 .card {
     background:#1a1a1a;
     border:1px solid #333;
+    transition:0.2s ease;
+}
+
+.card:hover {
+    transform:translateY(-3px);
+    border-color:#444;
 }
 
 .preview-360 {
     width:100%;
     aspect-ratio:2 / 1;
     background:#000;
-    border-bottom:1px solid #333;
+    border-radius:12px 12px 0 0;
+    overflow:hidden;
 }
 
 .form-control, textarea {
@@ -258,20 +265,29 @@ body { background:#111; color:#fff; }
     box-shadow:none;
 }
 
-.start-radio:checked {
-    accent-color:#28a745;
+.form-check-label {
+    color:#ccc;
+}
+
+.form-check-input:checked + .form-check-label {
+    color:#28a745;
+    font-weight:600;
 }
 
 .meta-box {
     background:#181818;
     border:1px solid #333;
-    border-radius:8px;
-    padding:20px;
+    border-radius:12px;
+    padding:25px;
+}
+
+.start-highlight {
+    border:2px solid #28a745 !important;
 }
 </style>
 </head>
 
-<body class="container py-4">
+<body class="container-fluid px-3 px-md-4 px-xl-5 py-4">
 
 <div class="mb-4">
     <a href="admin.php" class="btn btn-outline-light btn-sm">
@@ -279,7 +295,7 @@ body { background:#111; color:#fff; }
     </a>
 </div>
 
-<h1 class="mb-4"><?= sanitize($folderName) ?></h1>
+<h1 class="mb-4 display-6"><?= sanitize($folderName) ?></h1>
 
 <form method="post">
 
@@ -309,11 +325,12 @@ body { background:#111; color:#fff; }
 
     $desc = $meta['images'][$filename] ?? '';
     $isPanorama = $meta['panoramas'][$filename] ?? true;
+    $isStart = ($meta['start_image'] ?? '') === $filename;
 ?>
 
-<div class="col-12 col-lg-6">
+<div class="col-12 col-md-6 col-xxl-4">
 
-    <div class="card h-100">
+    <div class="card h-100 <?= $isStart ? 'start-highlight' : '' ?>">
 
         <?php if ($isPanorama): ?>
             <div class="preview-360"
@@ -330,6 +347,12 @@ body { background:#111; color:#fff; }
                 <?= sanitize($filename) ?>
             </h6>
 
+            <?php if (!empty($meta['images_meta'][$filename]['datetime'])): ?>
+                <div class="text-secondary small mb-2">
+                    📅 <?= date("d/m/Y H:i", $meta['images_meta'][$filename]['timestamp']) ?>
+                </div>
+            <?php endif; ?>
+
             <div class="mb-3">
                 <input type="text"
                        name="images[<?= sanitize($filename) ?>]"
@@ -338,15 +361,15 @@ body { background:#111; color:#fff; }
                        placeholder="Descrizione immagine">
             </div>
 
-            <div class="d-flex flex-wrap gap-3 align-items-center">
+            <div class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
 
                 <div class="form-check">
-                    <input class="form-check-input start-radio"
+                    <input class="form-check-input"
                            type="radio"
                            name="start_image"
                            value="<?= sanitize($filename) ?>"
-                           <?= ($meta['start_image'] ?? '') === $filename ? 'checked' : '' ?>>
-                    <label class="form-check-label small text-light">
+                           <?= $isStart ? 'checked' : '' ?>>
+                    <label class="form-check-label small">
                         ⭐ Immagine iniziale
                     </label>
                 </div>
@@ -383,281 +406,6 @@ body { background:#111; color:#fff; }
 </div>
 
 </form>
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Admin 360 - <?= sanitize($folderName) ?></title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
-<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
-<style>
-body { font-family: Arial; background:#111; color:#fff; padding:20px; }
-input, textarea { width:100%; padding:8px; background:#222; border:1px solid #444; color:#fff; }
-button { padding:10px 20px; background:#444; color:#fff; border:none; cursor:pointer; margin-top:20px; }
-
-.start-selector {
-    margin-top: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.start-selector input[type="radio"] {
-    accent-color: #28a745;
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-}
-
-.start-selector label {
-    cursor: pointer;
-    font-size: 14px;
-    color: #ccc;
-}
-
-.start-selector input[type="radio"]:checked + label {
-    color: #28a745;
-    font-weight: 600;
-}
-
-.image-info {
-	width:100%;
-    max-width: 1000px;
-}
-a { color:#0af; text-decoration:none; }
-a:hover { text-decoration:underline; }
-
-.image-info {
-    flex: 1;
-}
-
-.image-info input {
-    width: 100%;
-    padding: 8px;
-    margin-top: 6px;
-    background: #111;
-    border: 1px solid #333;
-    color: #fff;
-    border-radius: 4px;
-}
-
-.button-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.inline-form {
-    margin: 0;
-}
-
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 36px;
-    padding: 0 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-    border: none;
-    cursor: pointer;
-    transition: 0.2s ease;
-}
-
-.image-row {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 15px;
-    margin-bottom: 40px;
-    padding: 25px;
-    background: #1a1a1a;
-    border-radius: 10px;
-    border: 1px solid #333;
-}
-
-.image-row img {
-    width: 100%;
-    max-width: 1000px;
-    aspect-ratio: 2 / 1;
-    object-fit: cover;
-}
-
-.preview-360 {
-    width: 100%;
-    max-width: 500px;
-    aspect-ratio: 2 / 1;
-    border: 1px solid #444;
-    background: #000;
-    border-radius: 8px;
-}
-
-</style>
-</head>
-<body>
-
-<a href="admin.php">← Torna alla lista</a>
-
-<h1><?= sanitize($folderName) ?></h1>
-
-<form method="post">
-<h3>Titolo cartella</h3>
-<textarea name="folder_comment" rows="3"><?= sanitize($meta['folder_comment']) ?></textarea>
-<button type="submit" class="btn btn-success">💾 Salva</button>
-
-<h3>Immagini</h3>
-
-<?php foreach ($images as $img):
-
-    $filename = basename($img);
-    $thumbPath = $thumbFolder . '/' . $filename;
-    $relativeThumb = THUMB_URL.'/' . $folderName . '/' . $filename;
-
-    if (!file_exists($thumbPath) || filemtime($img) > filemtime($thumbPath)) {
-        createThumbnail($img, $thumbPath, 800);
-    }
-
-    $desc = $meta['images'][$filename] ?? '';
-?>
-
-<div class="image-row">
-<?php $isPanorama = $meta['panoramas'][$filename] ?? true; ?>
-
-<?php if ($isPanorama): ?>
-
-    <div class="preview-360"
-         id="preview_<?= sanitize($filename) ?>">
-    </div>
-
-<?php else: ?>
-
-    <img src="<?= $relativeThumb ?>"
-         class="preview-360"
-         style="object-fit:cover;">
-
-<?php endif; ?>
-    <div class="image-info">
-        <span><?= sanitize($filename) ?></span>
-        <input type="text"
-               name="images[<?= sanitize($filename) ?>]"
-               value="<?= sanitize($desc) ?>"
-               placeholder="Descrizione immagine">
-	<div class="button-row">
-<div class="start-selector">
-    <input type="radio"
-           id="start_<?= sanitize($filename) ?>"
-           name="start_image"
-           value="<?= sanitize($filename) ?>"
-           <?= ($meta['start_image'] ?? '') === $filename ? 'checked' : '' ?>>
-
-    <label for="start_<?= sanitize($filename) ?>">
-        ⭐ Immagine iniziale
-    </label>
-</div>
-    <a class="btn btn-primary"
-       href="admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=<?= urlencode($filename) ?>">
-       🟢 Gestione Hotspot
-    </a>
-    <button type="submit"
-        name="delete_image"
-        value="<?= htmlspecialchars($filename) ?>"
-        class="btn btn-danger"
-        onclick="return confirm('Eliminare questa foto?');">
-    ❌ Elimina
-</button>
-
-</div>
-    </div>
-</div>
-<?php endforeach; ?>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-
-    <?php foreach ($images as $img):
-        $filename = basename($img);
-        $relativeImage = IMAGES_URL.'/' . $folderName . '/' . $filename;
-	$relativeThumb = THUMB_URL.'/' . $folderName . '/' . $filename;
-    ?>
-
-    pannellum.viewer("preview_<?= sanitize($filename) ?>", {
-        type: "equirectangular",
-	preview: "<?= $relativeThumb ?>",      // thumbnail statica
-        panorama: "<?= $relativeImage ?>",
-        autoLoad: false,
-        showControls: false,
-        compass: false,
-        keyboardZoom: false,
-        mouseZoom: false,
-        pitch: 0,
-        yaw: 0,
-        hfov: 130,
-        hotSpots: [],
-	strings: {
-        	loadButtonLabel: "Clicca",
-        	loadingLabel: "Caricamento in corso..."
-    	},
-
-    });
-
-    <?php endforeach; ?>
-
-});
-</script>
-<button type="submit" class="btn btn-success">💾 Salva</button>
-</form>
-<script>
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(function() {
-        alert("Link copiato negli appunti");
-    });
-}
-</script>
-<script>
-function copyPublicLink(button, url) {
-
-    if (navigator.clipboard && window.isSecureContext) {
-
-        navigator.clipboard.writeText(url).then(() => {
-            showCopied(button);
-        }).catch(() => {
-            fallbackCopy(button, url);
-        });
-
-    } else {
-        fallbackCopy(button, url);
-    }
-}
-
-function fallbackCopy(button, url) {
-
-    const textarea = document.createElement("textarea");
-    textarea.value = url;
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
-    document.body.appendChild(textarea);
-
-    textarea.select();
-    textarea.setSelectionRange(0, 99999);
-
-    try {
-        document.execCommand("copy");
-        showCopied(button);
-    } catch (err) {
-        alert("Copia non riuscita.\n\n" + url);
-    }
-
-    document.body.removeChild(textarea);
-}
-
-function showCopied(button) {
-    const original = button.innerText;
-    button.innerText = "✓ Copiato";
-    setTimeout(() => {
-        button.innerText = original;
-    }, 1500);
-}
-</script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -694,5 +442,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
 });
 </script>
+
 </body>
 </html>

@@ -20,7 +20,7 @@ $memoryMax = ini_get('memory_limit');
 
 $effectiveBytes = min(toBytes($uploadMax), toBytes($postMax));
 $effectiveMB = round($effectiveBytes / 1024 / 1024, 1);
-$prefillFolder = $_GET['folder'] ?? '';
+$prefillFolder = $_GET['folder'] ?? date("Y-m-d_His");
 ?>
 <!DOCTYPE html>
 <html>
@@ -177,7 +177,7 @@ if (!response.ok) {
         progressBar.innerText = percent + '%';
     }
 dropZone.innerHTML = `Caricamento completato ✅`;
-result.innerHTML = `<a href="admin.php?folder=${folderName}"
+result.innerHTML = `<a href="admin_edit.php?folder=${folderName}"
         class="btn btn-success">
         Visualizza immagini
      </a>`;
