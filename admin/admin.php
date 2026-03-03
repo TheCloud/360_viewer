@@ -114,6 +114,7 @@ if (!$currentFolder) {
 <title>Admin 360</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <style>
 body { background:#111; color:#fff; }
 .card { background:#1a1a1a; border:1px solid #333; }
@@ -192,7 +193,7 @@ body { background:#111; color:#fff; }
 
     $folderComment = '';
     $hasDescriptions = false;
-
+    $decoded = [];
     if ($hasMeta) {
         $raw = file_get_contents($metaFile);
         $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
@@ -220,7 +221,7 @@ if ($count > 0) {
         }
     }
 
-    $isPanorama = $meta['panoramas'][$previewImage] ?? true;
+    $isPanorama = $decoded['panoramas'][$previewImage] ?? true;
     $preview = THUMB_URL . '/' . $name . '/' . $previewImage;
 }
 
@@ -273,41 +274,57 @@ if ($count > 0) {
             <p class="card-text small"><?= $count ?> foto</p>
 
             <div class="mt-auto">
+<div class="mt-auto pt-3">
 
-                <a href="admin_edit.php?folder=<?= urlencode($name) ?>"
-                   class="btn btn-sm <?= $hasMeta ? 'btn-outline-light' : 'btn-warning text-dark' ?>">
-                    <?= $hasMeta ? '✏ Modifica' : '➕ Crea descrizioni' ?>
-                </a>
+    <?php
+    $token = generateToken($name);
 
-<a href="admin_upload.php?folder=<?= urlencode($name) ?>"
-   class="btn btn-sm btn-outline-success ms-2">
-   ➕ Aggiungi foto
-</a>
-<?php
-$token = generateToken($name);
-$token = generateToken($name);
+    $publicUrl = APP_SCHEME.'://' . $_SERVER['HTTP_HOST']
+               . APP_BASE_URL."/index.php?open=" . urlencode($name)
+               . "&token=" . $token;
+    ?>
 
-$publicUrl = APP_SCHEME.'://' . $_SERVER['HTTP_HOST']
-           . APP_BASE_URL."/index.php?open=" . urlencode($name)
-           . "&token=" . $token;
-?>
+    <!-- RIGA 1 : PUBBLICO -->
+    <div class="d-flex flex-column flex-sm-row gap-2 mb-2">
 
-<div class="d-flex flex-wrap gap-2 mt-3">
-<button class="btn btn-sm btn-outline-success"
-        onclick="copyPublicLink(this, '<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>')">
-    🔗 Link pubblico
-</button>
-                <a href="<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>"
-                   target="_blank"
-                   class="btn btn-sm btn-outline-secondary ms-2">
-                    👁 Apri viewer
-                </a>
-<form method="post" onsubmit="return confirm('Sei sicuro di voler eliminare definitivamente questo album?');" style="display:inline;">
-    <input type="hidden" name="delete_folder" value="<?= htmlspecialchars($name) ?>">
-    <button type="submit" class="btn btn-sm btn-outline-danger mt-2">
-        🗑 Elimina
-    </button>
-</form>
+        <button class="btn btn-outline-primary btn-sm flex-fill"
+                onclick="copyPublicLink(this, '<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>')">
+            🔗 Copia link
+        </button>
+
+        <a href="<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>"
+           target="_blank"
+           class="btn btn-outline-secondary btn-sm flex-fill">
+            👁 Apri viewer
+        </a>
+
+    </div>
+
+    <!-- RIGA 2 : CRUD -->
+    <div class="d-flex flex-column flex-sm-row gap-2">
+
+        <a href="admin_upload.php?folder=<?= urlencode($name) ?>"
+           class="btn btn-outline-success btn-sm flex-fill">
+           ➕ Aggiungi
+        </a>
+
+        <a href="admin_edit.php?folder=<?= urlencode($name) ?>"
+           class="btn btn-outline-light btn-sm flex-fill">
+           ✏ Modifica
+        </a>
+
+        <form method="post"
+              class="flex-fill"
+              onsubmit="return confirm('Sei sicuro di voler eliminare definitivamente questo album?');">
+            <input type="hidden" name="delete_folder" value="<?= htmlspecialchars($name) ?>">
+            <button type="submit"
+                    class="btn btn-outline-danger btn-sm w-100">
+                🗑 Elimina
+            </button>
+        </form>
+
+    </div>
+
 </div>
             </div>
 
