@@ -1,5 +1,5 @@
 <?php
-
+require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../config.php';
 
 $currentFolder = $_GET['folder'] ?? null;
@@ -176,9 +176,12 @@ body { background:#111; color:#fff; }
 
 <h1 class="mb-4">Gestione Cartelle 360&deg;</h1>
 <div class="mb-3">
-    <a href="admin_upload.php" class="btn btn-success">
-        ➕ Nuova cartella / Upload
-    </a>
+<a href="admin_upload.php" class="btn btn-success">
+    <i class="bi bi-folder-plus me-1"></i> Nuova cartella
+</a>
+<a href="admin_users.php" class="btn btn-outline-light">
+    <i class="bi bi-people"></i> Utenti
+</a>
 </div>
 <div class="row g-4">
 

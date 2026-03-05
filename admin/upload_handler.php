@@ -1,6 +1,6 @@
 <?php
 ini_set('memory_limit', '512M');
-
+require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../config.php';
 
 $baseDir = IMAGES_DIR;
