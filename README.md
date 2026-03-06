@@ -9,6 +9,7 @@ Viewer web per foto sferiche equirettangolari (Insta360) con:
 -   Thumbnail generate automaticamente
 -   Gestione descrizioni tramite `meta.json`
 -   Pannello admin per editing metadata
+-   Utenti admin
 
 ------------------------------------------------------------------------
 
@@ -26,42 +27,6 @@ Viewer web per foto sferiche equirettangolari (Insta360) con:
      │          ├── img1.jpg
      │          └── meta.json
      └── thumbnails/
-
-------------------------------------------------------------------------
-
-## 📸 Come aggiungere foto
-
-1.  Creare una nuova cartella dentro `/images`
-2.  Inserire file JPG equirettangolari (export Insta360)
-3.  Opzionale: creare `meta.json` oppure usare `/admin.php`
-
-------------------------------------------------------------------------
-
-## 📝 Formato meta.json
-
-    {
-      "folder_comment": "Descrizione della giornata",
-      "images": {
-        "img1.jpg": "Descrizione prima foto",
-        "img2.jpg": "Descrizione seconda foto"
-      }
-    }
-
-------------------------------------------------------------------------
-
-## 🔗 Deep Link supportati
-
-Cartella:
-
-    /360?open=2026-02-10
-
-Immagine:
-
-    /360?open=2026-02-10&img=img1.jpg
-
-Vista salvata:
-
-    /360?open=2026-02-10&img=img1.jpg&yaw=120&pitch=-10&hfov=80
 
 ------------------------------------------------------------------------
 
@@ -88,8 +53,7 @@ Verifica:
 
 ## 🔐 Sicurezza
 
-Proteggere `/admin.php` con: - Basic Auth - Whitelist IP - Login
-semplice
+La cartella /admin viene protetta con la gestione utenti, primo utente (da cancellare) admin/password
 
 ------------------------------------------------------------------------
 
