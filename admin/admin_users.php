@@ -3,7 +3,8 @@
 require_once __DIR__ . '/auth.php';
 
 $usersFile = __DIR__ . '/users.json';
-$users = json_decode(file_get_contents($usersFile), true);
+$data   = json_decode(file_get_contents($usersFile), true);
+$users = $data['users'] ?? [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -25,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unset($users[$del]);
         }
     }
-
-    file_put_contents($usersFile, json_encode($users, JSON_PRETTY_PRINT));
+    $data['users']=$users;
+    file_put_contents($usersFile, json_encode($data, JSON_PRETTY_PRINT));
 
     header("Location: admin_users.php");
     exit;

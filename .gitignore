@@ -3,4 +3,4 @@ thumbnails/*
 .ht*
 config.php
 admin/debug.log
-admin/users.json
+admin/*.json

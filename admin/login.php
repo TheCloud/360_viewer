@@ -1,31 +1,47 @@
 <?php
-
 // Operazioni di setup al primo avvio
 require_once("first_login.php");
 
-session_set_cookie_params([
-    'lifetime' => 60*60*24*30, // 30 giorni
-    'path' => '/',
-    'secure' => isset($_SERVER['HTTPS']),
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
+$usersFile  = __DIR__.'/users.json';
+$tokensFile = __DIR__.'/tokens.json';
 
-session_start();
+$data   = json_decode(file_get_contents($usersFile), true);
+$users = $data['users'] ?? [];
 
-$usersFile = __DIR__ . '/users.json';
-$users = json_decode(file_get_contents($usersFile), true);
+if (!file_exists($tokensFile)) {
+    file_put_contents($tokensFile, json_encode([], JSON_PRETTY_PRINT));
+}
+
+$tokens = json_decode(file_get_contents($tokensFile), true);
 
 $error = false;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD']==='POST') {
 
-    $username = $_POST['username'] ?? '';
+    $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if (isset($users[$username]) && password_verify($password, $users[$username])) {
+    if (isset($users[$username]) && password_verify($password,$users[$username])) {
 
-        $_SESSION['admin_user'] = $username;
+        $token = bin2hex(random_bytes(32));
+
+        $tokens[$token] = [
+            'user' => $username,
+            'hash' => $users[$username],
+            'created' => time()
+        ];
+
+        file_put_contents($tokensFile,json_encode($tokens,JSON_PRETTY_PRINT));
+
+        setcookie(
+            "admin_token",
+            $token,
+            time()+60*60*24*30,
+            "/",
+            "",
+            isset($_SERVER['HTTPS']),
+            true
+        );
 
         header("Location: admin.php");
         exit;
@@ -34,75 +50,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $error = true;
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
-
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>Admin Login</title>
-
+<title>Login Admin</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<style>
-
-body {
-    background:#111;
-}
-
-.login-card {
-    max-width:400px;
-}
-
-</style>
-
 </head>
 
-<body class="d-flex align-items-center justify-content-center vh-100">
+<body class="bg-dark text-light d-flex align-items-center justify-content-center vh-100">
 
-<div class="card login-card shadow">
+<div class="card bg-secondary p-4" style="max-width:400px">
 
-<div class="card-body">
-
-<h4 class="mb-3 text-center">Admin Login</h4>
+<h4 class="mb-3">Login</h4>
 
 <?php if ($error): ?>
-
 <div class="alert alert-danger">
-Credenziali non valide
+<?= htmlspecialchars($error) ?>
 </div>
-
 <?php endif; ?>
 
 <form method="post">
 
-<div class="mb-3">
 <input
-type="text"
+class="form-control mb-3"
 name="username"
-class="form-control"
 placeholder="Username"
 required>
-</div>
 
-<div class="mb-3">
 <input
 type="password"
+class="form-control mb-3"
 name="password"
-class="form-control"
 placeholder="Password"
 required>
-</div>
 
 <button class="btn btn-primary w-100">
 Login
 </button>
 
 </form>
-
-</div>
 
 </div>
 

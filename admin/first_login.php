@@ -1,36 +1,41 @@
 <?php
 
 $htaccess = __DIR__ . '/.htaccess';
+
 if (!file_exists($htaccess)) {
-   file_put_contents($htaccess,
-      '<FilesMatch "\.(json)$">
-     Require all denied
-    </FilesMatch>');
+file_put_contents(
+    $htaccess,
+'<FilesMatch "\.(json)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(json)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>'
+);
 }
 
-
 $usersFile = __DIR__ . '/users.json';
-$template  = __DIR__ . '/users.example.json';
 
 if (!file_exists($usersFile)) {
-
-    if (file_exists($template)) {
-        copy($template, $usersFile);
-    } else {
-
         $default = [
             "users" => [
                 "admin" => password_hash("password", PASSWORD_DEFAULT)
             ]
         ];
-
         file_put_contents(
             $usersFile,
             json_encode($default, JSON_PRETTY_PRINT)
         );
+
+    // inizializza tokens
+    $tokensFile = __DIR__ . '/tokens.json';
+    if (!file_exists($tokensFile)) {
+        file_put_contents($tokensFile, json_encode([], JSON_PRETTY_PRINT));
     }
 
-    echo '
+echo <<<HTML
 <!DOCTYPE html>
 <html>
 <head>
@@ -45,9 +50,7 @@ if (!file_exists($usersFile)) {
 
 <h4 class="mb-3">Prima inizializzazione</h4>
 
-<p>
-È stato creato automaticamente il file utenti con l\'utente:
-</p>
+<p>È stato creato automaticamente il file utenti con l'utente:</p>
 
 <ul>
 <li><strong>username:</strong> admin</li>
@@ -66,9 +69,8 @@ Gestione utenti
 
 </body>
 </html>
-';
+HTML;
 
-    exit;
+exit;
 }
-
 ?>
