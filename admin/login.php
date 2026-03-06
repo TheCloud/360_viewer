@@ -1,4 +1,8 @@
 <?php
+
+// Operazioni di setup al primo avvio
+require_once("first_login.php");
+
 session_set_cookie_params([
     'lifetime' => 60*60*24*30, // 30 giorni
     'path' => '/',
@@ -6,20 +10,6 @@ session_set_cookie_params([
     'httponly' => true,
     'samesite' => 'Strict'
 ]);
-
-$adminDir = __DIR__;
-$htaccess = $adminDir . '/.htaccess';
-
-if (!file_exists($htaccess)) {
-
-    $rules = <<<HT
-<Files "users.json">
-Require all denied
-</Files>
-HT;
-
-    file_put_contents($htaccess, $rules);
-}
 
 session_start();
 

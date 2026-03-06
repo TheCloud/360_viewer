@@ -173,14 +173,26 @@ body { background:#111; color:#fff; }
 
 </head>
 <body class="container py-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
 
-<h1 class="mb-4">Gestione Cartelle 360&deg;</h1>
+    <h1 class="mb-0">Gestione Cartelle 360°</h1>
+
+    <div class="d-flex gap-2">
+
+        <a href="admin_users.php" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-people me-1"></i> Utenti
+        </a>
+
+        <a href="logout.php" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </a>
+
+    </div>
+
+</div>
 <div class="mb-3">
 <a href="admin_upload.php" class="btn btn-success">
     <i class="bi bi-folder-plus me-1"></i> Nuova cartella
-</a>
-<a href="admin_users.php" class="btn btn-outline-light">
-    <i class="bi bi-people"></i> Utenti
 </a>
 </div>
 <div class="row g-4">
