@@ -304,13 +304,13 @@ if ($count > 0) {
 
         <button class="btn btn-outline-primary btn-sm flex-fill"
                 onclick="copyPublicLink(this, '<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>')">
-            🔗 Copia link
+        <i class="bi bi-share"></i> Copia link
         </button>
 
         <a href="<?= htmlspecialchars($publicUrl, ENT_QUOTES) ?>"
            target="_blank"
            class="btn btn-outline-secondary btn-sm flex-fill">
-            👁 Apri viewer
+            <i class="bi bi-eye"></i> Apri panoramica
         </a>
 
     </div>
@@ -320,12 +320,12 @@ if ($count > 0) {
 
         <a href="admin_upload.php?folder=<?= urlencode($name) ?>"
            class="btn btn-outline-success btn-sm flex-fill">
-           ➕ Aggiungi
+        <i class="bi bi-upload"></i> Carica foto
         </a>
 
         <a href="admin_edit.php?folder=<?= urlencode($name) ?>"
            class="btn btn-outline-light btn-sm flex-fill">
-           ✏ Modifica
+        <i class="bi bi-pencil"></i> Modifica album
         </a>
 
         <form method="post"
@@ -334,7 +334,7 @@ if ($count > 0) {
             <input type="hidden" name="delete_folder" value="<?= htmlspecialchars($name) ?>">
             <button type="submit"
                     class="btn btn-outline-danger btn-sm w-100">
-                🗑 Elimina
+            <i class="bi bi-trash"></i> Elimina album
             </button>
         </form>
 
