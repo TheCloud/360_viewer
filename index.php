@@ -295,6 +295,7 @@ body { background:#111; color:#fff; }
     box-shadow:0 0 14px rgba(0,120,255,0.9);
     color:white;
     font-size:16px;
+transform: translate(-50%, -50%);
 }
 
 .custom-hotspot {
