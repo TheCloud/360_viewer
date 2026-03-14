@@ -193,8 +193,8 @@ body { background:#111; color:#fff; font-family:Arial; margin:0; }
     border-radius: 50%;
     background: rgba(0, 255, 200, 0.9);
     box-shadow: 0 0 12px rgba(0,255,200,1);
-    transform: translate(-50%, -50%);
     position: absolute;
+    transform: translate(-50%, -50%);
     z-index: 9999 !important;
 }
 
@@ -421,19 +421,38 @@ if (is360) {
 
         hotspots.forEach(h => {
 
-            const pos = panoToFlat(h.pitch, h.yaw);
+        const naturalRatio = img.naturalWidth / img.naturalHeight;
+const boxRatio     = wrap.clientWidth / wrap.clientHeight;
 
-            const dot = document.createElement("div");
+let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
 
-            dot.className = (h.type === "link")
-                ? "link-hotspot"
-                : "info-hotspot";
+if (naturalRatio > boxRatio) {
+    drawWidth  = wrap.clientWidth;
+    drawHeight = wrap.clientWidth / naturalRatio;
+    offsetY = (wrap.clientHeight - drawHeight) / 2;
+} else {
+    drawHeight = wrap.clientHeight;
+    drawWidth  = wrap.clientHeight * naturalRatio;
+    offsetX = (wrap.clientWidth - drawWidth) / 2;
+}
 
-            dot.style.position = "absolute";
-            dot.style.left = pos.x + "%";
-            dot.style.top  = pos.y + "%";
+hotspots.forEach(h => {
 
-            wrap.appendChild(dot);
+    const pos = panoToFlat(h.pitch, h.yaw);
+
+    const dot = document.createElement("div");
+
+    dot.className = (h.type === "link" || h.type === "url")
+        ? "link-hotspot"
+        : "info-hotspot";
+
+    dot.style.position = "absolute";
+    dot.style.left = (offsetX + (pos.x / 100) * drawWidth) + "px";
+    dot.style.top  = (offsetY + (pos.y / 100) * drawHeight) + "px";
+
+    wrap.appendChild(dot);
+
+});
 
         });
 
@@ -441,31 +460,54 @@ if (is360) {
 
     img.addEventListener("click", function(e){
 
-        const rect = img.getBoundingClientRect();
+    const rect = img.getBoundingClientRect();
 
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = (e.clientY - rect.top) / rect.height;
+    const naturalRatio = img.naturalWidth / img.naturalHeight;
+    const boxRatio     = rect.width / rect.height;
 
-        const yaw   = x * 360 - 180;
-        const pitch = 90 - y * 180;
+    let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
 
-        document.getElementById('pitch').value = pitch.toFixed(4);
-        document.getElementById('yaw').value   = yaw.toFixed(4);
+    if (naturalRatio > boxRatio) {
 
-        if (previewId) {
-    previewId.remove();
-}
+        drawWidth  = rect.width;
+        drawHeight = rect.width / naturalRatio;
+        offsetY = (rect.height - drawHeight) / 2;
 
-const preview = document.createElement("div");
+    } else {
+
+        drawHeight = rect.height;
+        drawWidth  = rect.height * naturalRatio;
+        offsetX = (rect.width - drawWidth) / 2;
+
+    }
+
+    const x = (e.clientX - rect.left - offsetX) / drawWidth;
+    const y = (e.clientY - rect.top  - offsetY) / drawHeight;
+
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+
+    const yaw   = x * 360 - 180;
+    const pitch = 90 - y * 180;
+
+    document.getElementById('pitch').value = pitch.toFixed(4);
+    document.getElementById('yaw').value   = yaw.toFixed(4);
+
+    /* rimuove preview precedente */
+    if (previewId) previewId.remove();
+
+    const preview = document.createElement("div");
 preview.className = "preview-hotspot";
-
 preview.style.position = "absolute";
-preview.style.left = (x*100)+"%";
-preview.style.top  = (y*100)+"%";
+
+preview.style.left = (offsetX + x * drawWidth) + "px";
+preview.style.top  = (offsetY + y * drawHeight) + "px";
 
 wrap.appendChild(preview);
-
 previewId = preview;
+
+    wrap.appendChild(preview);
+
+    previewId = preview;
 
     });
 
