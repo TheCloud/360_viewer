@@ -265,8 +265,10 @@ button {
                     <option value="">-- Seleziona --</option>
                     <?php foreach ($allImages as $imgFile):
                         $imgName = basename($imgFile);
-                        if ($imgName === $imageName) continue;
-                        $label = $meta['images'][$imgName] ?? $imgName;
+if ($imgName === $imageName) continue;
+$label = !empty($meta['images'][$imgName])
+    ? $meta['images'][$imgName]
+    : $imgName;
                     ?>
                     <option value="<?= $imgName ?>"
                             data-label="<?= htmlspecialchars($label) ?>">
@@ -320,72 +322,151 @@ button {
 </div>
 
 <script>
+
 const hotspots = <?= json_encode($currentHotspots) ?>;
+const is360 = <?= json_encode($meta['panoramas'][$imageName] ?? false) ?>;
 
-const viewer = pannellum.viewer('panorama', {
-    type:'equirectangular',
-    panorama:'<?= IMAGES_URL ?>/<?= $folderName ?>/<?= $imageName ?>',
-    autoLoad:true,
-    showControls:true,
-hotSpots: hotspots.map(h => {
-
-    if (h.type === "link" && h.target) {
-        return {
-            pitch: h.pitch,
-            yaw: h.yaw,
-            type: "info",
-            cssClass: "link-hotspot",
-            text: h.text,
-            clickHandlerFunc: function() {
-                window.location.href =
-                    "admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=" +
-                    encodeURIComponent(h.target);
-            }
-        };
-    }
-
-    return {
-        pitch: h.pitch,
-        yaw: h.yaw,
-        type: "info",
-        cssClass: "info-hotspot",
-        text: h.text
-    };
-
-})
-});
-
+let viewer = null;
 let previewId = null;
 
-viewer.on('mouseup', function(event) {
+if (is360) {
 
-    const coords = viewer.mouseEventToCoords(event);
-    if (!coords) return;
+    viewer = pannellum.viewer('panorama', {
+        type:'equirectangular',
+        panorama:'<?= IMAGES_URL ?>/<?= $folderName ?>/<?= $imageName ?>',
+        autoLoad:true,
+        showControls:true,
+        hotSpots: hotspots.map(h => {
 
-    const pitch = coords[0];
-    const yaw   = coords[1];
+            if (h.type === "link" && h.target) {
+                return {
+                    pitch: h.pitch,
+                    yaw: h.yaw,
+                    type: "info",
+                    cssClass: "link-hotspot",
+                    text: h.text,
+                    clickHandlerFunc: function() {
+                        window.location.href =
+                        "admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=" +
+                        encodeURIComponent(h.target);
+                    }
+                };
+            }
 
-    document.getElementById('pitch').value = pitch.toFixed(4);
-    document.getElementById('yaw').value   = yaw.toFixed(4);
+            return {
+                pitch: h.pitch,
+                yaw: h.yaw,
+                type: "info",
+                cssClass: "info-hotspot",
+                text: h.text
+            };
 
-    if (previewId) {
-        viewer.removeHotSpot(previewId);
-        previewId = null;
-    }
-
-    previewId = "preview";
-
-    viewer.addHotSpot({
-        id: previewId,
-        pitch: pitch,
-        yaw: yaw,
-        cssClass: "preview-hotspot",
-        createTooltipFunc: function(div) {
-            div.classList.add("preview-hotspot");
-        }
+        })
     });
 
-});
+    viewer.on('mouseup', function(event) {
+
+        const coords = viewer.mouseEventToCoords(event);
+        if (!coords) return;
+
+        const pitch = coords[0];
+        const yaw   = coords[1];
+
+        document.getElementById('pitch').value = pitch.toFixed(4);
+        document.getElementById('yaw').value   = yaw.toFixed(4);
+
+        if (previewId) {
+            viewer.removeHotSpot(previewId);
+        }
+
+        previewId = "preview";
+
+        viewer.addHotSpot({
+            id: previewId,
+            pitch: pitch,
+            yaw: yaw,
+            cssClass: "preview-hotspot",
+            createTooltipFunc: function(div) {
+                div.classList.add("preview-hotspot");
+            }
+        });
+
+    });
+
+} else {
+
+    const container = document.getElementById("panorama");
+
+    container.innerHTML =
+        '<div id="flatEditor" style="position:relative;width:100%;height:100%;">' +
+        '<img id="flatImage" src="<?= IMAGES_URL ?>/<?= $folderName ?>/<?= $imageName ?>" ' +
+        'style="width:100%;height:100%;object-fit:contain;">' +
+        '</div>';
+
+    const img = document.getElementById("flatImage");
+    const wrap = document.getElementById("flatEditor");
+
+    img.onload = function(){
+
+        hotspots.forEach(h => {
+
+            const pos = panoToFlat(h.pitch, h.yaw);
+
+            const dot = document.createElement("div");
+
+            dot.className = (h.type === "link")
+                ? "link-hotspot"
+                : "info-hotspot";
+
+            dot.style.position = "absolute";
+            dot.style.left = pos.x + "%";
+            dot.style.top  = pos.y + "%";
+
+            wrap.appendChild(dot);
+
+        });
+
+    };
+
+    img.addEventListener("click", function(e){
+
+        const rect = img.getBoundingClientRect();
+
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+
+        const yaw   = x * 360 - 180;
+        const pitch = 90 - y * 180;
+
+        document.getElementById('pitch').value = pitch.toFixed(4);
+        document.getElementById('yaw').value   = yaw.toFixed(4);
+
+        if (previewId) {
+    previewId.remove();
+}
+
+const preview = document.createElement("div");
+preview.className = "preview-hotspot";
+
+preview.style.position = "absolute";
+preview.style.left = (x*100)+"%";
+preview.style.top  = (y*100)+"%";
+
+wrap.appendChild(preview);
+
+previewId = preview;
+
+    });
+
+}
+
+function panoToFlat(pitch, yaw){
+
+    const x = (yaw + 180) / 360 * 100;
+    const y = (90 - pitch) / 180 * 100;
+
+    return {x,y};
+}
 
 /* UI logic */
 
@@ -414,6 +495,7 @@ function toggle(){
 
 typeSelect.addEventListener('change',toggle);
 toggle();
+
 </script>
 
 </body>
