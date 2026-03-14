@@ -1,6 +1,22 @@
 <?php
 error_reporting(E_ERROR | E_WARNING | E_PARSE);
-header("Cache-Control: public, max-age=31536000");
+
+
+//CACHING
+$request = $_SERVER['REQUEST_URI'] ?? '';
+
+if (preg_match('/\.(jpg|jpeg|png|webp|gif)$/i', $request)) {
+
+    // immagini: cache lunga
+    header("Cache-Control: public, max-age=31536000, immutable");
+
+} else {
+
+    // pagine PHP / viewer / admin
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+}
+
 
 $isHttps =
     (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
