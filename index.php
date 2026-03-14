@@ -420,6 +420,15 @@ let autoHfov  = <?= json_encode($hfovParam) ?>;
 function openViewer(imagePath, description, fileName) {
 
     currentImageName = fileName;
+    const newUrl =
+    window.location.origin +
+    window.location.pathname +
+    '?open=' + encodeURIComponent(autoOpenFolder) +
+    '&token=' + encodeURIComponent(autoToken) +
+    '&img=' + encodeURIComponent(fileName);
+
+    history.replaceState(null, '', newUrl);
+
     document.getElementById('viewerOverlay').style.display = 'block';
 
     if (viewer) {
@@ -619,6 +628,14 @@ function closeViewer() {
     }
 
     document.getElementById('panorama').innerHTML = '';
+
+    const baseUrl =
+        window.location.origin +
+        window.location.pathname +
+        '?open=' + encodeURIComponent(autoOpenFolder) +
+        '&token=' + encodeURIComponent(autoToken);
+
+    history.replaceState(null, '', baseUrl);
 }
 
 
