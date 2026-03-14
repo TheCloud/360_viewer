@@ -84,6 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $entry['target'] = basename($target);
     }
 
+ if ($type === 'url' && !empty($_POST['url'])) {
+    $entry['type']   = 'url';
+    $entry['target'] = trim($_POST['url']);
+}
+
     $meta['hotspots'][$imageName][] = $entry;
 
     file_put_contents($metaFile,
@@ -256,6 +261,7 @@ button {
                 <select name="type" id="typeSelect">
                     <option value="info">Solo testo</option>
                     <option value="link">Link ad altra immagine</option>
+                    <option value="url">Link esterno</option>
                 </select>
             </div>
 
@@ -283,6 +289,12 @@ $label = !empty($meta['images'][$imgName])
                 <input type="text" name="text"
                        id="textInput" required>
             </div>
+
+<div class="form-col" id="urlCol" style="display:none;">
+<label>URL</label>
+<input type="text" name="url" id="urlInput"
+placeholder="https://...">
+</div>
         </div>
 
         <button type="submit"
@@ -297,14 +309,13 @@ $label = !empty($meta['images'][$imgName])
 
 <?php foreach ($currentHotspots as $h): ?>
 <div class="hotspot-row">
-    <div>
-        <strong><?= htmlspecialchars($h['text']) ?></strong>
-        (<?= $h['pitch'] ?> / <?= $h['yaw'] ?>)
-        <?php if (!empty($h['type'])): ?>
-            → <?= htmlspecialchars($h['target']) ?>
-        <?php endif; ?>
-    </div>
-
+<div>
+    <strong><?= htmlspecialchars($h['text']) ?></strong>
+    (<?= $h['pitch'] ?> / <?= $h['yaw'] ?>)
+    <?php if (!empty($h['target'])): ?>
+        → <?= htmlspecialchars($h['target']) ?>
+    <?php endif; ?>
+</div>
     <form method="post">
         <input type="hidden"
                name="delete_pitch"
@@ -474,6 +485,7 @@ const typeSelect=document.getElementById('typeSelect');
 const linkCol=document.getElementById('linkCol');
 const targetSelect=document.getElementById('targetSelect');
 const textInput=document.getElementById('textInput');
+const urlCol = document.getElementById('urlCol');
 
 let autoFilled=false;
 
@@ -489,8 +501,13 @@ targetSelect.addEventListener('change',function(){
 textInput.addEventListener('input',()=>autoFilled=false);
 
 function toggle(){
+
     linkCol.style.display =
         (typeSelect.value==='link') ? 'block':'none';
+
+    urlCol.style.display =
+        (typeSelect.value==='url') ? 'block':'none';
+
 }
 
 typeSelect.addEventListener('change',toggle);
