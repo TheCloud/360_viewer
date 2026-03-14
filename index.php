@@ -279,6 +279,24 @@ body { background:#111; color:#fff; }
     border-radius:6px;
 }
 
+.url-hotspot {
+    width:34px !important;
+    height:34px !important;
+    position:absolute !important;
+    display:flex !important;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background: radial-gradient(circle,
+        rgba(0,180,255,0.95) 20%,
+        rgba(0,120,255,0.8) 50%,
+        rgba(0,80,200,0.5) 75%,
+        transparent 100%);
+    box-shadow:0 0 14px rgba(0,120,255,0.9);
+    color:white;
+    font-size:16px;
+}
+
 .custom-hotspot {
     width:18px;
     height:18px;
@@ -464,9 +482,14 @@ function openViewer(imagePath, description, fileName) {
 
             const dot = document.createElement("div");
 
-            dot.className = (h.type === 'link'  || h.type === 'url')
-                ? "link-hotspot"
-                : "custom-hotspot";
+            if (h.type === 'link') {
+    dot.className = "link-hotspot";
+} else if (h.type === 'url') {
+    dot.className = "url-hotspot";
+    dot.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
+} else {
+    dot.className = "custom-hotspot";
+}
 
             dot.style.position = "absolute";
             dot.style.left = pos.x + "%";
@@ -516,16 +539,19 @@ function openViewer(imagePath, description, fileName) {
     const yaw   = parseFloat(h.yaw);
 
     if (h.type === 'url' && h.target) {
-        return {
-            pitch, yaw,
-            type: 'info',
-            text: h.text || '',
-            cssClass: 'link-hotspot',
-            clickHandlerFunc: function() {
-                window.open(h.target, "_blank");
-            }
-        };
-    }
+    return {
+        pitch, yaw,
+        type: 'info',
+        text: h.text || '',
+        cssClass: 'url-hotspot',
+        createTooltipFunc: function(div){
+            div.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
+        },
+        clickHandlerFunc: function(){
+            window.open(h.target, "_blank");
+        }
+    };
+}
 
     if (h.type === 'link' && h.target) {
         return {
