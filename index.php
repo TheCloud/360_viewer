@@ -430,7 +430,7 @@ function openViewer(imagePath, description, fileName) {
     history.replaceState(null, '', newUrl);
 
     document.getElementById('viewerOverlay').style.display = 'block';
-
+    document.getElementById('panorama').innerHTML = '';
     if (viewer) {
         viewer.destroy();
         viewer = null;
