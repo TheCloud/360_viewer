@@ -431,11 +431,58 @@ function openViewer(imagePath, description, fileName) {
 
     if (!is360) {
 
-        document.getElementById('panorama').innerHTML =
-            '<img src="' + imagePath + '" style="width:100%; height:100%; object-fit:contain;">';
+    const container = document.getElementById('panorama');
 
-        return;
-    }
+    container.innerHTML =
+        '<div id="flatContainer" style="position:relative;width:100%;height:100%;">' +
+        '<img id="flatImage" src="' + imagePath + '" ' +
+        'style="width:100%;height:100%;object-fit:contain;">' +
+        '</div>';
+
+    const hs = imageHotspotsData?.[fileName] || [];
+
+    const img = document.getElementById("flatImage");
+    const wrap = document.getElementById("flatContainer");
+
+    img.onload = function () {
+
+        hs.forEach(h => {
+
+            const pitch = parseFloat(h.pitch);
+            const yaw   = parseFloat(h.yaw);
+
+            const pos = panoToFlat(pitch, yaw);
+
+            const dot = document.createElement("div");
+
+            dot.className = (h.type === 'link')
+                ? "link-hotspot"
+                : "custom-hotspot";
+
+            dot.style.position = "absolute";
+            dot.style.left = pos.x + "%";
+            dot.style.top  = pos.y + "%";
+
+            if (h.type === "link" && h.target) {
+
+                dot.onclick = function() {
+                    loadScene(h.target);
+                };
+
+            } else if (h.text) {
+
+                dot.title = h.text;
+
+            }
+
+            wrap.appendChild(dot);
+
+        });
+
+    };
+
+    return;
+}
 
     const previewPath = imagePath.replace('/images/', '/thumbnails/');
 
@@ -552,6 +599,14 @@ function loadScene(targetFile) {
         '&img=' + encodeURIComponent(targetFile);
 
     history.replaceState(null, '', newUrl);
+}
+
+function panoToFlat(pitch, yaw) {
+
+    const x = (yaw + 180) / 360 * 100;
+    const y = (90 - pitch) / 180 * 100;
+
+    return { x, y };
 }
 
 function closeViewer() {
