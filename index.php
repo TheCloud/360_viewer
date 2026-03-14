@@ -464,7 +464,7 @@ function openViewer(imagePath, description, fileName) {
 
             const dot = document.createElement("div");
 
-            dot.className = (h.type === 'link')
+            dot.className = (h.type === 'link'  || h.type === 'url')
                 ? "link-hotspot"
                 : "custom-hotspot";
 
@@ -474,15 +474,21 @@ function openViewer(imagePath, description, fileName) {
 
             if (h.type === "link" && h.target) {
 
-                dot.onclick = function() {
-                    loadScene(h.target);
-                };
+    dot.onclick = function() {
+        loadScene(h.target);
+    };
 
-            } else if (h.text) {
+} else if (h.type === "url" && h.target) {
 
-                dot.title = h.text;
+    dot.onclick = function() {
+        window.open(h.target, "_blank");
+    };
 
-            }
+} else if (h.text) {
+
+    dot.title = h.text;
+
+}
 
             wrap.appendChild(dot);
 
@@ -506,29 +512,41 @@ function openViewer(imagePath, description, fileName) {
         hfov: autoHfov ? parseFloat(autoHfov) : 130,
         hotSpots: (imageHotspotsData[fileName] || []).map(h => {
 
-            const pitch = parseFloat(h.pitch);
-            const yaw   = parseFloat(h.yaw);
+    const pitch = parseFloat(h.pitch);
+    const yaw   = parseFloat(h.yaw);
 
-            if (h.type === 'link' && h.target) {
-                return {
-                    pitch, yaw,
-                    type: 'info',
-                    text: h.text || '',
-                    cssClass: 'link-hotspot',
-                    clickHandlerFunc: function() {
-                        loadScene(h.target);
-                    }
-                };
+    if (h.type === 'url' && h.target) {
+        return {
+            pitch, yaw,
+            type: 'info',
+            text: h.text || '',
+            cssClass: 'link-hotspot',
+            clickHandlerFunc: function() {
+                window.open(h.target, "_blank");
             }
+        };
+    }
 
-            return {
-                pitch, yaw,
-                type: 'info',
-                text: h.text || '',
-                cssClass: 'custom-hotspot'
-            };
+    if (h.type === 'link' && h.target) {
+        return {
+            pitch, yaw,
+            type: 'info',
+            text: h.text || '',
+            cssClass: 'link-hotspot',
+            clickHandlerFunc: function() {
+                loadScene(h.target);
+            }
+        };
+    }
 
-        })
+    return {
+        pitch, yaw,
+        type: 'info',
+        text: h.text || '',
+        cssClass: 'custom-hotspot'
+    };
+
+})
     });
 
     viewer.on('load', function () {
