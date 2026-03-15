@@ -20,20 +20,7 @@ if (!is_dir($folderPath) || !file_exists($imagePath))
 
 $metaFile = $folderPath . '/meta.json';
 
-$meta = [
-    'folder_comment' => '',
-    'images' => [],
-    'hotspots' => [],
-    'panoramas' => [],
-    'flats' => []
-];
-
-if (file_exists($metaFile)) {
-    $raw = file_get_contents($metaFile);
-    $decoded = json_decode($raw, true);
-    if (is_array($decoded))
-        $meta = array_merge($meta, $decoded);
-}
+$meta = loadMeta($folderPath);
 
 /* ================= DELETE ================= */
 

@@ -231,22 +231,7 @@ if (!$is360) {
 ========================= */
 
 $metaFile = $folderPath . '/meta.json';
-
-$meta = [
-    'folder_comment' => '',
-    'start_image'    => null,
-    'images'         => [],
-    'hotspots'       => [],
-    'panoramas'      => []
-];
-
-if (file_exists($metaFile)) {
-    $raw = file_get_contents($metaFile);
-    $decoded = json_decode($raw, true);
-    if (is_array($decoded)) {
-        $meta = array_merge($meta, $decoded);
-    }
-}
+$meta = loadMeta($folderPath);
 
 // salva flag panorama
 if (!isset($meta['panoramas'])) {

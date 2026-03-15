@@ -58,27 +58,7 @@ if (!is_dir($folderPath)) {
 
 $images   = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
 $metaFile = $folderPath . '/meta.json';
-
-$meta = [
-    'folder_comment' => '',
-    'start_image'    => null,
-    'images'         => [],
-    'panoramas'      => [],
-    'images_meta'    => []
-];
-
-if (file_exists($metaFile)) {
-    $raw = file_get_contents($metaFile);
-    $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-    $decoded = json_decode($raw, true);
-    if (is_array($decoded)) {
-        $meta = array_merge($meta, $decoded);
-
-if (!isset($meta['images'])) {
-    $meta['images'] = [];
-}
-    }
-}
+$meta = loadMeta($folderPath);
 
 /* =====================================================
    AUTO-DETECT PANORAMA + EXIF DATA (LAZY)
