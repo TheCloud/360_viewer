@@ -99,24 +99,41 @@ function isPanorama360($filePath) {
 */
 function convertFlatToPseudoPanorama($imagePath) {
 
-    $tmp = $imagePath . "_pano_tmp.jpg";
+$src = imagecreatefromjpeg($imagePath);
+if (!$src) return false;
 
-    /* crea pseudo panorama */
-    $cmd = "magick "
-        . escapeshellarg($imagePath)
-        . " -resize 2000x1000 "
-        . " -gravity center "
-        . " -background black "
-        . " -extent 4096x2048 "
-        . escapeshellarg($tmp);
+$srcW = imagesx($src);
+$srcH = imagesy($src);
 
-    exec($cmd);
+$scale = min(2000 / $srcW, 1000 / $srcH);
 
-    if (!file_exists($tmp)) {
-        return false;
-    }
+$newW = (int)($srcW * $scale);
+$newH = (int)($srcH * $scale);
 
-    rename($tmp, $imagePath);
+$resized = imagecreatetruecolor($newW, $newH);
+
+imagecopyresampled(
+    $resized, $src,
+    0,0,0,0,
+    $newW, $newH,
+    $srcW, $srcH
+);
+
+$canvas = imagecreatetruecolor(4096, 2048);
+
+$black = imagecolorallocate($canvas, 0,0,0);
+imagefill($canvas, 0,0, $black);
+
+$dstX = (4096 - $newW) / 2;
+$dstY = (2048 - $newH) / 2;
+
+imagecopy($canvas, $resized, $dstX, $dstY, 0,0, $newW, $newH);
+
+imagejpeg($canvas, $imagePath, 92);
+
+imagedestroy($src);
+imagedestroy($resized);
+imagedestroy($canvas);
 
     /* aggiunge metadata GPano */
     $cmdExif = "exiftool -overwrite_original "

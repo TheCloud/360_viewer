@@ -16,13 +16,6 @@ if (!extension_loaded('gd')) {
     $systemWarnings[] = "L'estensione PHP GD non è attiva.";
 }
 
-/* ImageMagick CLI */
-
-$magick = trim(shell_exec("which magick"));
-
-if (!$magick) {
-    $systemWarnings[] = "ImageMagick (comando 'magick') non trovato nel sistema.";
-}
 
 /* permessi scrittura cartella immagini */
 
