@@ -6,6 +6,9 @@ require_once __DIR__ . '/../config.php';
 $baseDir = IMAGES_DIR;
 $thumbBaseDir = THUMB_DIR;
 
+$isFlat=false;
+$is360=false;
+
 file_put_contents(
     __DIR__ . '/debug.log',
     print_r($_FILES, true),
@@ -91,6 +94,47 @@ function isPanorama360($filePath) {
     return false;
 }
 
+/* ========================
+ * Crea una immagine falsa sferica delle flat
+*/
+function convertFlatToPseudoPanorama($imagePath) {
+
+    $tmp = $imagePath . "_pano_tmp.jpg";
+
+    /* crea pseudo panorama */
+    $cmd = "magick "
+        . escapeshellarg($imagePath)
+        . " -resize 2000x1000 "
+        . " -gravity center "
+        . " -background black "
+        . " -extent 4096x2048 "
+        . escapeshellarg($tmp);
+
+    exec($cmd);
+
+    if (!file_exists($tmp)) {
+        return false;
+    }
+
+    rename($tmp, $imagePath);
+
+    /* aggiunge metadata GPano */
+    $cmdExif = "exiftool -overwrite_original "
+        . "-ProjectionType=equirectangular "
+        . "-UsePanoramaViewer=True "
+        . "-FullPanoWidthPixels=4096 "
+        . "-FullPanoHeightPixels=2048 "
+        . "-CroppedAreaImageWidthPixels=2000 "
+        . "-CroppedAreaImageHeightPixels=1000 "
+        . "-CroppedAreaLeftPixels=1048 "
+        . "-CroppedAreaTopPixels=524 "
+        . escapeshellarg($imagePath);
+
+    exec($cmdExif);
+
+    return true;
+}
+
 /* =========================
    VALIDAZIONE REQUEST
 ========================= */
@@ -119,8 +163,14 @@ if (empty($_FILES['image'])) {
 }
 
 if ($_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-    http_response_code(400);
-    echo "Errore upload file";
+
+    file_put_contents(
+        __DIR__ . '/debug.log',
+        "UPLOAD ERROR: " . $_FILES['image']['error'] . "\n",
+        FILE_APPEND
+    );
+
+    echo "Errore upload file: " . $_FILES['image']['error'];
     exit;
 }
 
@@ -170,6 +220,12 @@ createThumbnail($targetPath, $thumbPath, 800);
 
 $is360 = isPanorama360($targetPath);
 
+if (!$is360) {
+    if (convertFlatToPseudoPanorama($targetPath)) {
+        $isFlat = true;
+    }
+}
+
 /* =========================
    AGGIORNA META.JSON
 ========================= */
@@ -197,7 +253,16 @@ if (!isset($meta['panoramas'])) {
     $meta['panoramas'] = [];
 }
 
-$meta['panoramas'][$originalName] = $is360;
+if ($is360){
+    $meta['panoramas'][$originalName] = $is360;
+}
+if (!isset($meta['flats'])) {
+    $meta['flats'] = [];
+}
+
+if ($isFlat) {
+    $meta['flats'][$originalName] = $isFlat;
+}
 
 file_put_contents(
     $metaFile,

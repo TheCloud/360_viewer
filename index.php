@@ -427,6 +427,7 @@ let currentImageName = null;
 
 let imageHotspotsData = <?= json_encode($meta['hotspots'] ?? []) ?>;
 let panoramaFlags     = <?= json_encode($meta['panoramas'] ?? []) ?>;
+let flatFlags = <?= json_encode($meta['flats'] ?? []) ?>;
 
 let autoOpenFolder = <?= json_encode($openFolder) ?>;
 let autoOpenImage  = <?= json_encode($openImage) ?>;
@@ -456,8 +457,10 @@ function openViewer(imagePath, description, fileName) {
     }
 
     const is360 = panoramaFlags[fileName] ?? false;
+    const isFlat = flatFlags[fileName] ?? false;
 
-    if (!is360) {
+    // Immagini non flat e non 360! (cioè boh)
+    if (!is360 && !isFlat) {
 
     const container = document.getElementById('panorama');
 
@@ -525,56 +528,72 @@ function openViewer(imagePath, description, fileName) {
 
     const previewPath = imagePath.replace('/images/', '/thumbnails/');
 
-    viewer = pannellum.viewer('panorama', {
-        type: 'equirectangular',
-        panorama: imagePath,
-        preview: previewPath,
-        autoLoad: true,
-        showControls: true,
-        yaw: autoYaw ? parseFloat(autoYaw) : 0,
-        pitch: autoPitch ? parseFloat(autoPitch) : 0,
-        hfov: autoHfov ? parseFloat(autoHfov) : 130,
-        hotSpots: (imageHotspotsData[fileName] || []).map(h => {
+let pannellumConfig = {
+    type: 'equirectangular',
+    panorama: imagePath,
+    preview: previewPath,
+    autoLoad: true,
+    showControls: true,
+    yaw: autoYaw ? parseFloat(autoYaw) : 0,
+    pitch: autoPitch ? parseFloat(autoPitch) : 0,
+    hfov: autoHfov ? parseFloat(autoHfov) : 130,
+    hotSpots: (imageHotspotsData[fileName] || []).map(h => {
 
-    const pitch = parseFloat(h.pitch);
-    const yaw   = parseFloat(h.yaw);
+        const pitch = parseFloat(h.pitch);
+        const yaw   = parseFloat(h.yaw);
 
-    if (h.type === 'url' && h.target) {
-    return {
-        pitch, yaw,
-        type: 'info',
-        text: h.text || '',
-        cssClass: 'url-hotspot',
-        createTooltipFunc: function(div){
-            div.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
-        },
-        clickHandlerFunc: function(){
-            window.open(h.target, "_blank");
+        if (h.type === 'url' && h.target) {
+            return {
+                pitch, yaw,
+                type: 'info',
+                text: h.text || '',
+                cssClass: 'url-hotspot',
+                createTooltipFunc: function(div){
+                    div.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
+                },
+                clickHandlerFunc: function(){
+                    window.open(h.target, "_blank");
+                }
+            };
         }
-    };
-}
 
-    if (h.type === 'link' && h.target) {
+        if (h.type === 'link' && h.target) {
+            return {
+                pitch, yaw,
+                type: 'info',
+                text: h.text || '',
+                cssClass: 'link-hotspot',
+                clickHandlerFunc: function() {
+                    loadScene(h.target);
+                }
+            };
+        }
+
         return {
             pitch, yaw,
             type: 'info',
             text: h.text || '',
-            cssClass: 'link-hotspot',
-            clickHandlerFunc: function() {
-                loadScene(h.target);
-            }
+            cssClass: 'custom-hotspot'
         };
-    }
 
-    return {
-        pitch, yaw,
-        type: 'info',
-        text: h.text || '',
-        cssClass: 'custom-hotspot'
-    };
+    })
+};
 
-})
-    });
+// Per le immagine flat convertite a sferiche, usa parametri particolari
+if (isFlat) {
+
+    pannellumConfig.minPitch = 0;
+    pannellumConfig.maxPitch = 0;
+
+    pannellumConfig.minYaw = 0;
+    pannellumConfig.maxYaw = 0;
+
+    pannellumConfig.minHfov = 110;
+    pannellumConfig.maxHfov = 110;
+
+}
+
+viewer = pannellum.viewer('panorama', pannellumConfig);
 
     viewer.on('load', function () {
 

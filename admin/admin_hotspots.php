@@ -23,7 +23,9 @@ $metaFile = $folderPath . '/meta.json';
 $meta = [
     'folder_comment' => '',
     'images' => [],
-    'hotspots' => []
+    'hotspots' => [],
+    'panoramas' => [],
+    'flats' => []
 ];
 
 if (file_exists($metaFile)) {
@@ -102,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $currentHotspots = $meta['hotspots'][$imageName] ?? [];
+$isFlat = $meta['flats'][$imageName] ?? false;
 
 /* immagini disponibili */
 $allImages = array_merge(
@@ -336,17 +339,19 @@ placeholder="https://...">
 
 const hotspots = <?= json_encode($currentHotspots) ?>;
 const is360 = <?= json_encode($meta['panoramas'][$imageName] ?? false) ?>;
+const isFlat = <?= json_encode($meta['flats'][$imageName] ?? false) ?>;
 
 let viewer = null;
 let previewId = null;
 
-if (is360) {
+if (is360 || isFlat) {
 
-    viewer = pannellum.viewer('panorama', {
-        type:'equirectangular',
-        panorama:'<?= IMAGES_URL ?>/<?= $folderName ?>/<?= $imageName ?>',
-        autoLoad:true,
-        showControls:true,
+    let config = {
+        type: 'equirectangular',
+        panorama: '<?= IMAGES_URL ?>/<?= $folderName ?>/<?= $imageName ?>',
+        autoLoad: true,
+        showControls: !isFlat,
+
         hotSpots: hotspots.map(h => {
 
             if (h.type === "link" && h.target) {
@@ -373,8 +378,22 @@ if (is360) {
             };
 
         })
-    });
+    };
 
+    if (isFlat) {
+
+        config.minPitch = 0;
+        config.maxPitch = 0;
+
+        config.minYaw = 0;
+        config.maxYaw = 0;
+
+        config.minHfov = 110;
+        config.maxHfov = 110;
+
+    }
+
+    viewer = pannellum.viewer('panorama', config);
     viewer.on('mouseup', function(event) {
 
         const coords = viewer.mouseEventToCoords(event);
