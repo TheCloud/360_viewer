@@ -159,22 +159,9 @@ exit;}
    IMMAGINI + META
 ========================= */
 
-$meta = [
-    'folder_comment' => '',
-    'start_image'    => null,
-    'images'         => [],
-    'hotspots'       => [],
-    'panoramas'      => []
-];
 
 $metaFile = $folderPath . '/meta.json';
-
-if (file_exists($metaFile)) {
-    $decoded = json_decode(file_get_contents($metaFile), true);
-    if (is_array($decoded)) {
-        $meta = array_merge($meta, $decoded);
-    }
-}
+$meta = loadMeta($folderPath);
 
 $startImage = null;
 if (!empty($meta['start_image']) &&

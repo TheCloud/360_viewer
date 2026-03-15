@@ -45,3 +45,6 @@ define('THUMB_URL', APP_BASE_URL . '/thumbnails');
 
 // Token
 define('SECRET_KEY', 'LA_TUA_CHIAVE');
+
+require_once(APP_ROOT."/meta_functions.php");
+
