@@ -2,6 +2,34 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../config.php';
 
+$systemWarnings = [];
+
+/* funzioni PHP */
+
+if (!function_exists('exif_read_data')) {
+    $systemWarnings[] = "La funzione PHP exif_read_data() non è disponibile. Abilitare l'estensione EXIF.";
+}
+
+/* estensione GD */
+
+if (!extension_loaded('gd')) {
+    $systemWarnings[] = "L'estensione PHP GD non è attiva.";
+}
+
+/* ImageMagick CLI */
+
+$magick = trim(shell_exec("which magick"));
+
+if (!$magick) {
+    $systemWarnings[] = "ImageMagick (comando 'magick') non trovato nel sistema.";
+}
+
+/* permessi scrittura cartella immagini */
+
+if (!is_writable(IMAGES_DIR)) {
+    $systemWarnings[] = "La cartella immagini non è scrivibile.";
+}
+
 $currentFolder = $_GET['folder'] ?? null;
 
 if ($currentFolder) {
@@ -190,11 +218,33 @@ body { background:#111; color:#fff; }
     </div>
 
 </div>
+<?php if (!empty($systemWarnings)): ?>
+
+<div style="
+    background:#8b0000;
+    color:white;
+    padding:15px;
+    border-radius:8px;
+    margin-bottom:20px;
+">
+
+<strong>Problemi di configurazione server:</strong>
+
+<ul>
+<?php foreach ($systemWarnings as $w): ?>
+<li><?= htmlspecialchars($w) ?></li>
+<?php endforeach; ?>
+</ul>
+
+</div>
+
+<?php endif; ?>
 <div class="mb-3">
 <a href="admin_upload.php" class="btn btn-success">
     <i class="bi bi-folder-plus me-1"></i> Nuova cartella
 </a>
 </div>
+
 <div class="row g-4">
 
 <?php foreach ($folders as $folder):
