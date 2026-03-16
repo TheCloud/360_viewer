@@ -142,6 +142,7 @@ $allImages = array_merge(
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="stylesheet" href="<?= APP_BASE_URL ?>/css/hotspots.css">
 <meta charset="UTF-8">
 <title>Hotspot Editor</title>
 
@@ -190,58 +191,8 @@ body { background:#111; color:#fff; font-family:Arial; margin:0; }
     align-items:end;
 }
 
-.info-hotspot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        rgba(255,0,0,0.95) 30%,
-        rgba(255,0,0,0.4) 70%,
-        transparent 100%);
-    box-shadow: 0 0 12px rgba(255,0,0,0.9);
-    transform: translate(-50%, -50%);
-    position: absolute;
-}
-
-.link-hotspot {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        rgba(255,180,0,0.95) 30%,
-        rgba(255,120,0,0.6) 70%,
-        transparent 100%);
-    box-shadow: 0 0 14px rgba(255,120,0,0.9);
-    transform: translate(-50%, -50%);
-    position: absolute;
-}
-
-.url-hotspot {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        rgba(0,180,255,0.95) 30%,
-        rgba(0,120,255,0.6) 70%,
-        transparent 100%);
-    box-shadow: 0 0 14px rgba(0,120,255,0.9);
-    transform: translate(-50%, -50%);
-    position: absolute;
-}
-
 .pnlm-hotspot-base {
     pointer-events: auto !important;
-}
-
-.preview-hotspot {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: rgba(0, 255, 200, 0.9);
-    box-shadow: 0 0 12px rgba(0,255,200,1);
-    position: absolute;
-    transform: translate(-50%, -50%);
-    z-index: 9999 !important;
 }
 
 .form-col { min-width:220px; }
@@ -410,7 +361,7 @@ if (is360) {
                     pitch: h.pitch,
                     yaw: h.yaw,
                     type: "info",
-                    cssClass: "link-hotspot",
+                    cssClass: "hotspot link",
                     text: h.text,
                     clickHandlerFunc: function() {
                         window.location.href =
@@ -425,7 +376,7 @@ if (is360) {
                     pitch: h.pitch,
                     yaw: h.yaw,
                     type: "info",
-                    cssClass: "url-hotspot",
+                    cssClass: "hotspot url",
                     text: h.text,
                     clickHandlerFunc: function() {
                         window.open(h.target, "_blank");
@@ -437,7 +388,7 @@ if (is360) {
                 pitch: h.pitch,
                 yaw: h.yaw,
                 type: "info",
-                cssClass: "info-hotspot",
+                cssClass: "hotspot info",
                 text: h.text
             };
 
@@ -467,10 +418,7 @@ if (is360) {
             id: previewId,
             pitch: pitch,
             yaw: yaw,
-            cssClass: "preview-hotspot",
-            createTooltipFunc: function(div) {
-                div.classList.add("preview-hotspot");
-            }
+            cssClass: "hotspot preview"
         });
 
     });
@@ -504,9 +452,9 @@ if (is360) {
             const x = parseFloat(h.x) * width;
             const y = parseFloat(h.y) * height;
 
-            let cssClass = 'info-hotspot';
-            if (h.type === 'link') cssClass = 'link-hotspot';
-            if (h.type === 'url')  cssClass = 'url-hotspot';
+            let cssClass = 'hotspot info';
+            if (h.type === 'link') cssClass = 'hotspot link';
+            if (h.type === 'url')  cssClass = 'hotspot url';
 
             const icon = L.divIcon({
                 className: '',
@@ -554,7 +502,7 @@ if (is360) {
 
             const previewIcon = L.divIcon({
                 className: '',
-                html: '<div class="preview-hotspot"></div>',
+                html: '<div class="hotspot preview"></div>',
                 iconSize: [18,18],
                 iconAnchor: [9,9]
             });

@@ -203,6 +203,7 @@ if (!is_dir($thumbFolder)) mkdir($thumbFolder, 0755, true);
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="stylesheet" href="<?= APP_BASE_URL ?>/css/hotspots.css">
 <meta charset="UTF-8">
 <title>Admin 360 - <?= sanitize($folderName) ?></title>
 

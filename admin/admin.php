@@ -130,6 +130,7 @@ if (!$currentFolder) {
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="stylesheet" href="<?= APP_BASE_URL ?>/css/hotspots.css">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta charset="UTF-8">
 <title>Admin 360</title>

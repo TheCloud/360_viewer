@@ -52,6 +52,7 @@ http_response_code(403);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Accesso riservato</title>
+<link rel="stylesheet" href="<?= APP_BASE_URL ?>/css/hotspots.css">
 <style>
 html {
     height:100%;
@@ -115,6 +116,8 @@ http_response_code(403);
 <!DOCTYPE html>
 <html lang="it">
 <head>
+<link rel="stylesheet" href="<?= APP_BASE_URL ?>/css/hotspots.css">
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Accesso riservato</title>
@@ -205,6 +208,7 @@ if ($startImage) {
 <!DOCTYPE html>
 <html lang="it">
 <head>
+<link rel="stylesheet" href="<?= APP_BASE_URL ?>/css/hotspots.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Foto 360</title>
@@ -286,69 +290,6 @@ body { background:#111; color:#fff; }
     background:rgba(0,0,0,0.6);
     padding:10px 20px;
     border-radius:6px;
-}
-
-.url-hotspot {
-    width:34px !important;
-    height:34px !important;
-    position:absolute !important;
-    display:flex !important;
-    align-items:center;
-    justify-content:center;
-    border-radius:50%;
-    background: radial-gradient(circle,
-        rgba(0,180,255,0.95) 20%,
-        rgba(0,120,255,0.8) 50%,
-        rgba(0,80,200,0.5) 75%,
-        transparent 100%);
-    box-shadow:0 0 14px rgba(0,120,255,0.9);
-    color:white;
-    font-size:16px;
-transform: translate(-50%, -50%);
-}
-
-.custom-hotspot {
-    width:18px;
-    height:18px;
-    background:#ff3b3b;
-    border-radius:50%;
-    border:2px solid #fff;
-}
-
-.link-hotspot {
-    width: 34px !important;
-    height: 34px !important;
-    display: block !important;
-    position: absolute !important;
-    pointer-events: auto;
-    cursor: pointer;
-}
-
-.link-hotspot::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        rgba(255,180,0,0.95) 20%,
-        rgba(255,120,0,0.8) 50%,
-        rgba(255,60,0,0.5) 75%,
-        transparent 100%);
-    box-shadow: 0 0 14px rgba(255,120,0,0.9);
-}
-
-.link-hotspot::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -70%);
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 14px solid white;
-    pointer-events: none;
 }
 </style>
 </head>
@@ -488,7 +429,7 @@ if (flatMap) {
             crs: L.CRS.Simple,
             minZoom: -2,
             maxZoom: 2,
-            zoomSnap: 0.1
+            zoomSnap: 0.2
         });
 
         const bounds = [[0,0],[height,width]];
@@ -505,10 +446,14 @@ hs.forEach(h => {
     const x = parseFloat(h.x) * width;
     const y = parseFloat(h.y) * height;
 
+    let cssClass = "hotspot info";
+    if (h.type === "link") cssClass = "hotspot link";
+    if (h.type === "url")  cssClass = "hotspot url";
+
     const icon = L.divIcon({
         className: '',
-        html: '<div class="custom-hotspot"></div>',
-        iconSize: [18,18]
+        html: '<div class="' + cssClass + '"></div>',
+        iconSize: [22,22]
     });
 
     const marker = L.marker([y,x], {icon}).addTo(flatMap);
@@ -555,10 +500,7 @@ let pannellumConfig = {
                 pitch, yaw,
                 type: 'info',
                 text: h.text || '',
-                cssClass: 'url-hotspot',
-                createTooltipFunc: function(div){
-                    div.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
-                },
+                cssClass: 'hotspot url',
                 clickHandlerFunc: function(){
                     window.open(h.target, "_blank");
                 }
@@ -570,7 +512,7 @@ let pannellumConfig = {
                 pitch, yaw,
                 type: 'info',
                 text: h.text || '',
-                cssClass: 'link-hotspot',
+                cssClass: 'hotspot link',
                 clickHandlerFunc: function() {
                     loadScene(h.target);
                 }
@@ -581,7 +523,7 @@ let pannellumConfig = {
             pitch, yaw,
             type: 'info',
             text: h.text || '',
-            cssClass: 'custom-hotspot'
+            cssClass: 'hotspot info'
         };
 
     })

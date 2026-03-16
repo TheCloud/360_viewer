@@ -1,0 +1,96 @@
+.hotspot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    position: absolute;
+}
+
+/* info */
+
+.hotspot.info {
+    background: radial-gradient(circle,
+        rgba(255,0,0,0.95) 30%,
+        rgba(255,0,0,0.4) 70%,
+        transparent 100%);
+    box-shadow: 0 0 12px rgba(255,0,0,0.9);
+}
+
+/* link interno */
+
+.hotspot.link {
+    background: radial-gradient(circle,
+        rgba(255,180,0,0.95) 30%,
+        rgba(255,120,0,0.6) 70%,
+        transparent 100%);
+    box-shadow: 0 0 14px rgba(255,120,0,0.9);
+}
+
+/* url */
+
+.hotspot.url {
+    background: radial-gradient(circle,
+        rgba(0,180,255,0.95) 30%,
+        rgba(0,120,255,0.6) 70%,
+        transparent 100%);
+    box-shadow: 0 0 14px rgba(0,120,255,0.9);
+}
+
+/* preview */
+
+.hotspot.preview {
+    width:18px;
+    height:18px;
+    background:rgba(0,255,200,0.9);
+    box-shadow:0 0 12px rgba(0,255,200,1);
+}
+
+/* pannellum fix */
+
+.pnlm-hotspot-base {
+    pointer-events:auto;
+}
+
+.custom-hotspot {
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    position:absolute;
+    background: radial-gradient(circle,
+        rgba(255,0,0,0.95) 30%,
+        rgba(255,0,0,0.4) 70%,
+        transparent 100%);
+    box-shadow:0 0 12px rgba(255,0,0,0.9);
+}
+
+.link-hotspot {
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    position:absolute;
+    background: radial-gradient(circle,
+        rgba(255,180,0,0.95) 30%,
+        rgba(255,120,0,0.6) 70%,
+        transparent 100%);
+    box-shadow:0 0 14px rgba(255,120,0,0.9);
+}
+
+.url-hotspot {
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    position:absolute;
+    background: radial-gradient(circle,
+        rgba(0,180,255,0.95) 30%,
+        rgba(0,120,255,0.6) 70%,
+        transparent 100%);
+    box-shadow:0 0 14px rgba(0,120,255,0.9);
+}
+
+.leaflet-div-icon {
+    background: none;
+    border: none;
+}
