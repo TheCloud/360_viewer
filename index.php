@@ -2,12 +2,26 @@
 
 
 // Non esiste, prima installazione
-if (!file_exists(__DIR__ . '/config.php')){
-	copy(__DIR__.'/config.default.php',__DIR__ . '/config.php');
-	header("Location: /admin");
-	exit();
+//
+//
+$configFile = APP_ROOT . '/config.php';
+$defaultConfig = APP_ROOT . '/config.default.php';
+
+if (!file_exists($configFile)) {
+
+    $config = file_get_contents($defaultConfig);
+
+    /* genera chiave sicura */
+    $secret = bin2hex(random_bytes(32));
+
+    /* sostituisce placeholder */
+    $config = str_replace('LA_TUA_CHIAVE', $secret, $config);
+
+    file_put_contents($configFile, $config);
+
 }
-require_once __DIR__ . '/config.php';
+
+require_once $configFile;
 
 function generateToken($folder) {
     return hash_hmac('sha256', $folder, SECRET_KEY);
