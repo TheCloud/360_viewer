@@ -21,29 +21,63 @@ if (!is_dir($folderPath) || !file_exists($imagePath))
 $metaFile = $folderPath . '/meta.json';
 
 $meta = loadMeta($folderPath);
+$isFlat = $meta['flats'][$imageName] ?? false;
 
-/* ================= DELETE ================= */
+/* ================= DELETE / SAVE ================= */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    if (isset($_POST['delete_pitch'], $_POST['delete_yaw'])) {
+    if (!isset($meta['hotspots'][$imageName])) {
+        $meta['hotspots'][$imageName] = [];
+    }
+
+    /* ================= DELETE ================= */
+
+    if ($isFlat && isset($_POST['delete_x'], $_POST['delete_y'])) {
+
+        $xToDelete = (float)$_POST['delete_x'];
+        $yToDelete = (float)$_POST['delete_y'];
+
+        foreach ($meta['hotspots'][$imageName] as $key => $hs) {
+            if (isset($hs['x'], $hs['y']) &&
+                (float)$hs['x'] === $xToDelete &&
+                (float)$hs['y'] === $yToDelete) {
+                unset($meta['hotspots'][$imageName][$key]);
+                break;
+            }
+        }
+
+        $meta['hotspots'][$imageName] =
+            array_values($meta['hotspots'][$imageName]);
+
+        file_put_contents(
+            $metaFile,
+            json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+
+    if (!$isFlat && isset($_POST['delete_pitch'], $_POST['delete_yaw'])) {
 
         $pitchToDelete = (float)$_POST['delete_pitch'];
         $yawToDelete   = (float)$_POST['delete_yaw'];
 
-        if (!empty($meta['hotspots'][$imageName])) {
-            foreach ($meta['hotspots'][$imageName] as $key => $hs) {
-                if ((float)$hs['pitch'] === $pitchToDelete &&
-                    (float)$hs['yaw'] === $yawToDelete) {
-                    unset($meta['hotspots'][$imageName][$key]);
-                    break;
-                }
+        foreach ($meta['hotspots'][$imageName] as $key => $hs) {
+            if (isset($hs['pitch'], $hs['yaw']) &&
+                (float)$hs['pitch'] === $pitchToDelete &&
+                (float)$hs['yaw'] === $yawToDelete) {
+                unset($meta['hotspots'][$imageName][$key]);
+                break;
             }
-            $meta['hotspots'][$imageName] =
-                array_values($meta['hotspots'][$imageName]);
         }
 
-        file_put_contents($metaFile,
+        $meta['hotspots'][$imageName] =
+            array_values($meta['hotspots'][$imageName]);
+
+        file_put_contents(
+            $metaFile,
             json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
         );
 
@@ -59,28 +93,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $type   = $_POST['type'] ?? 'info';
     $target = $_POST['target'] ?? '';
 
-    if (!isset($meta['hotspots'][$imageName]))
-        $meta['hotspots'][$imageName] = [];
-
-    $entry = [
-        'pitch' => $pitch,
-        'yaw'   => $yaw,
-        'text'  => $text
-    ];
+    if ($isFlat) {
+        $entry = [
+            'x'    => $pitch,
+            'y'    => $yaw,
+            'text' => $text
+        ];
+    } else {
+        $entry = [
+            'pitch' => $pitch,
+            'yaw'   => $yaw,
+            'text'  => $text
+        ];
+    }
 
     if ($type === 'link' && !empty($target)) {
         $entry['type']   = 'link';
         $entry['target'] = basename($target);
     }
 
- if ($type === 'url' && !empty($_POST['url'])) {
-    $entry['type']   = 'url';
-    $entry['target'] = trim($_POST['url']);
-}
+    if ($type === 'url' && !empty($_POST['url'])) {
+        $entry['type']   = 'url';
+        $entry['target'] = trim($_POST['url']);
+    }
 
     $meta['hotspots'][$imageName][] = $entry;
 
-    file_put_contents($metaFile,
+    file_put_contents(
+        $metaFile,
         json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
     );
 
@@ -91,7 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $currentHotspots = $meta['hotspots'][$imageName] ?? [];
-$isFlat = $meta['flats'][$imageName] ?? false;
 
 /* immagini disponibili */
 $allImages = array_merge(
@@ -109,6 +148,10 @@ $allImages = array_merge(
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
 <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 body { background:#111; color:#fff; font-family:Arial; margin:0; }
@@ -169,6 +212,19 @@ body { background:#111; color:#fff; font-family:Arial; margin:0; }
         rgba(255,120,0,0.6) 70%,
         transparent 100%);
     box-shadow: 0 0 14px rgba(255,120,0,0.9);
+    transform: translate(-50%, -50%);
+    position: absolute;
+}
+
+.url-hotspot {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(0,180,255,0.95) 30%,
+        rgba(0,120,255,0.6) 70%,
+        transparent 100%);
+    box-shadow: 0 0 14px rgba(0,120,255,0.9);
     transform: translate(-50%, -50%);
     position: absolute;
 }
@@ -261,10 +317,10 @@ button {
                     <option value="">-- Seleziona --</option>
                     <?php foreach ($allImages as $imgFile):
                         $imgName = basename($imgFile);
-if ($imgName === $imageName) continue;
-$label = !empty($meta['images'][$imgName])
-    ? $meta['images'][$imgName]
-    : $imgName;
+                        if ($imgName === $imageName) continue;
+                        $label = !empty($meta['images'][$imgName])
+                            ? $meta['images'][$imgName]
+                            : $imgName;
                     ?>
                     <option value="<?= $imgName ?>"
                             data-label="<?= htmlspecialchars($label) ?>">
@@ -280,11 +336,11 @@ $label = !empty($meta['images'][$imgName])
                        id="textInput" required>
             </div>
 
-<div class="form-col" id="urlCol" style="display:none;">
-<label>URL</label>
-<input type="text" name="url" id="urlInput"
-placeholder="https://...">
-</div>
+            <div class="form-col" id="urlCol" style="display:none;">
+                <label>URL</label>
+                <input type="text" name="url" id="urlInput"
+                placeholder="https://...">
+            </div>
         </div>
 
         <button type="submit"
@@ -301,18 +357,25 @@ placeholder="https://...">
 <div class="hotspot-row">
 <div>
     <strong><?= htmlspecialchars($h['text']) ?></strong>
-    (<?= $h['pitch'] ?> / <?= $h['yaw'] ?>)
+
+    <?php if ($isFlat): ?>
+        (<?= $h['x'] ?> / <?= $h['y'] ?>)
+    <?php else: ?>
+        (<?= $h['pitch'] ?> / <?= $h['yaw'] ?>)
+    <?php endif; ?>
+
     <?php if (!empty($h['target'])): ?>
         → <?= htmlspecialchars($h['target']) ?>
     <?php endif; ?>
 </div>
     <form method="post">
-        <input type="hidden"
-               name="delete_pitch"
-               value="<?= $h['pitch'] ?>">
-        <input type="hidden"
-               name="delete_yaw"
-               value="<?= $h['yaw'] ?>">
+        <?php if ($isFlat): ?>
+            <input type="hidden" name="delete_x" value="<?= $h['x'] ?>">
+            <input type="hidden" name="delete_y" value="<?= $h['y'] ?>">
+        <?php else: ?>
+            <input type="hidden" name="delete_pitch" value="<?= $h['pitch'] ?>">
+            <input type="hidden" name="delete_yaw" value="<?= $h['yaw'] ?>">
+        <?php endif; ?>
         <button class="danger-btn">Elimina</button>
     </form>
 </div>
@@ -329,15 +392,16 @@ const is360 = <?= json_encode($meta['panoramas'][$imageName] ?? false) ?>;
 const isFlat = <?= json_encode($meta['flats'][$imageName] ?? false) ?>;
 
 let viewer = null;
+let flatMap = null;
 let previewId = null;
 
-if (is360 || isFlat) {
+if (is360) {
 
     let config = {
         type: 'equirectangular',
         panorama: '<?= IMAGES_URL ?>/<?= $folderName ?>/<?= $imageName ?>',
         autoLoad: true,
-        showControls: !isFlat,
+        showControls: true,
 
         hotSpots: hotspots.map(h => {
 
@@ -356,6 +420,19 @@ if (is360 || isFlat) {
                 };
             }
 
+            if (h.type === "url" && h.target) {
+                return {
+                    pitch: h.pitch,
+                    yaw: h.yaw,
+                    type: "info",
+                    cssClass: "url-hotspot",
+                    text: h.text,
+                    clickHandlerFunc: function() {
+                        window.open(h.target, "_blank");
+                    }
+                };
+            }
+
             return {
                 pitch: h.pitch,
                 yaw: h.yaw,
@@ -367,20 +444,8 @@ if (is360 || isFlat) {
         })
     };
 
-    if (isFlat) {
-
-        config.minPitch = 0;
-        config.maxPitch = 0;
-
-        config.minYaw = 0;
-        config.maxYaw = 0;
-
-        config.minHfov = 110;
-        config.maxHfov = 110;
-
-    }
-
     viewer = pannellum.viewer('panorama', config);
+
     viewer.on('mouseup', function(event) {
 
         const coords = viewer.mouseEventToCoords(event);
@@ -412,119 +477,94 @@ if (is360 || isFlat) {
 
 } else {
 
-    const container = document.getElementById("panorama");
+    const imageUrl = '<?= IMAGES_URL ?>/<?= $folderName ?>/<?= $imageName ?>';
 
-    container.innerHTML =
-        '<div id="flatEditor" style="position:relative;width:100%;height:100%;">' +
-        '<img id="flatImage" src="<?= IMAGES_URL ?>/<?= $folderName ?>/<?= $imageName ?>" ' +
-        'style="width:100%;height:100%;object-fit:contain;">' +
-        '</div>';
+    const img = new Image();
 
-    const img = document.getElementById("flatImage");
-    const wrap = document.getElementById("flatEditor");
+    img.onload = function() {
 
-    img.onload = function(){
+        const width  = img.width;
+        const height = img.height;
+
+        flatMap = L.map('panorama', {
+            crs: L.CRS.Simple,
+            minZoom: -2,
+            maxZoom: 2,
+            zoomSnap: 0.1
+        });
+
+        const bounds = [[0,0],[height,width]];
+
+        L.imageOverlay(imageUrl, bounds).addTo(flatMap);
+        flatMap.fitBounds(bounds);
+        flatMap.setMaxBounds(bounds);
 
         hotspots.forEach(h => {
 
-        const naturalRatio = img.naturalWidth / img.naturalHeight;
-const boxRatio     = wrap.clientWidth / wrap.clientHeight;
+            const x = parseFloat(h.x) * width;
+            const y = parseFloat(h.y) * height;
 
-let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+            let cssClass = 'info-hotspot';
+            if (h.type === 'link') cssClass = 'link-hotspot';
+            if (h.type === 'url')  cssClass = 'url-hotspot';
 
-if (naturalRatio > boxRatio) {
-    drawWidth  = wrap.clientWidth;
-    drawHeight = wrap.clientWidth / naturalRatio;
-    offsetY = (wrap.clientHeight - drawHeight) / 2;
-} else {
-    drawHeight = wrap.clientHeight;
-    drawWidth  = wrap.clientHeight * naturalRatio;
-    offsetX = (wrap.clientWidth - drawWidth) / 2;
-}
+            const icon = L.divIcon({
+                className: '',
+                html: '<div class="' + cssClass + '"></div>',
+                iconSize: [20,20],
+                iconAnchor: [10,10]
+            });
 
-hotspots.forEach(h => {
+            const marker = L.marker([y, x], {icon}).addTo(flatMap);
 
-    const pos = panoToFlat(h.pitch, h.yaw);
+            if (h.type === "link" && h.target) {
+                marker.on("click", () => {
+                    window.location.href =
+                    "admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=" +
+                    encodeURIComponent(h.target);
+                });
+            }
 
-    const dot = document.createElement("div");
+            if (h.type === "url" && h.target) {
+                marker.on("click", () => window.open(h.target, "_blank"));
+            }
 
-    dot.className = (h.type === "link" || h.type === "url")
-        ? "link-hotspot"
-        : "info-hotspot";
-
-    dot.style.position = "absolute";
-    dot.style.left = (offsetX + (pos.x / 100) * drawWidth) + "px";
-    dot.style.top  = (offsetY + (pos.y / 100) * drawHeight) + "px";
-
-    wrap.appendChild(dot);
-
-});
+            if (h.text) {
+                marker.bindTooltip(h.text);
+            }
 
         });
 
+        flatMap.on("click", function(e) {
+
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            const x = lng / width;
+            const y = lat / height;
+
+            if (x < 0 || x > 1 || y < 0 || y > 1) return;
+
+            document.getElementById('pitch').value = x.toFixed(6);
+            document.getElementById('yaw').value   = y.toFixed(6);
+
+            if (previewId) {
+                flatMap.removeLayer(previewId);
+            }
+
+            const previewIcon = L.divIcon({
+                className: '',
+                html: '<div class="preview-hotspot"></div>',
+                iconSize: [18,18],
+                iconAnchor: [9,9]
+            });
+
+            previewId = L.marker([lat, lng], {icon: previewIcon}).addTo(flatMap);
+
+        });
     };
 
-    img.addEventListener("click", function(e){
-
-    const rect = img.getBoundingClientRect();
-
-    const naturalRatio = img.naturalWidth / img.naturalHeight;
-    const boxRatio     = rect.width / rect.height;
-
-    let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-    if (naturalRatio > boxRatio) {
-
-        drawWidth  = rect.width;
-        drawHeight = rect.width / naturalRatio;
-        offsetY = (rect.height - drawHeight) / 2;
-
-    } else {
-
-        drawHeight = rect.height;
-        drawWidth  = rect.height * naturalRatio;
-        offsetX = (rect.width - drawWidth) / 2;
-
-    }
-
-    const x = (e.clientX - rect.left - offsetX) / drawWidth;
-    const y = (e.clientY - rect.top  - offsetY) / drawHeight;
-
-    if (x < 0 || x > 1 || y < 0 || y > 1) return;
-
-    const yaw   = x * 360 - 180;
-    const pitch = 90 - y * 180;
-
-    document.getElementById('pitch').value = pitch.toFixed(4);
-    document.getElementById('yaw').value   = yaw.toFixed(4);
-
-    /* rimuove preview precedente */
-    if (previewId) previewId.remove();
-
-    const preview = document.createElement("div");
-preview.className = "preview-hotspot";
-preview.style.position = "absolute";
-
-preview.style.left = (offsetX + x * drawWidth) + "px";
-preview.style.top  = (offsetY + y * drawHeight) + "px";
-
-wrap.appendChild(preview);
-previewId = preview;
-
-    wrap.appendChild(preview);
-
-    previewId = preview;
-
-    });
-
-}
-
-function panoToFlat(pitch, yaw){
-
-    const x = (yaw + 180) / 360 * 100;
-    const y = (90 - pitch) / 180 * 100;
-
-    return {x,y};
+    img.src = imageUrl;
 }
 
 /* UI logic */

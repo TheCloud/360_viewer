@@ -94,64 +94,6 @@ function isPanorama360($filePath) {
     return false;
 }
 
-/* ========================
- * Crea una immagine falsa sferica delle flat
-*/
-function convertFlatToPseudoPanorama($imagePath) {
-
-$src = imagecreatefromjpeg($imagePath);
-if (!$src) return false;
-
-$srcW = imagesx($src);
-$srcH = imagesy($src);
-
-$scale = min(2000 / $srcW, 1000 / $srcH);
-
-$newW = (int)($srcW * $scale);
-$newH = (int)($srcH * $scale);
-
-$resized = imagecreatetruecolor($newW, $newH);
-
-imagecopyresampled(
-    $resized, $src,
-    0,0,0,0,
-    $newW, $newH,
-    $srcW, $srcH
-);
-
-$canvas = imagecreatetruecolor(4096, 2048);
-
-$black = imagecolorallocate($canvas, 0,0,0);
-imagefill($canvas, 0,0, $black);
-
-$dstX = (4096 - $newW) / 2;
-$dstY = (2048 - $newH) / 2;
-
-imagecopy($canvas, $resized, $dstX, $dstY, 0,0, $newW, $newH);
-
-imagejpeg($canvas, $imagePath, 92);
-
-imagedestroy($src);
-imagedestroy($resized);
-imagedestroy($canvas);
-
-    /* aggiunge metadata GPano */
-    $cmdExif = "exiftool -overwrite_original "
-        . "-ProjectionType=equirectangular "
-        . "-UsePanoramaViewer=True "
-        . "-FullPanoWidthPixels=4096 "
-        . "-FullPanoHeightPixels=2048 "
-        . "-CroppedAreaImageWidthPixels=2000 "
-        . "-CroppedAreaImageHeightPixels=1000 "
-        . "-CroppedAreaLeftPixels=1048 "
-        . "-CroppedAreaTopPixels=524 "
-        . escapeshellarg($imagePath);
-
-    exec($cmdExif);
-
-    return true;
-}
-
 /* =========================
    VALIDAZIONE REQUEST
 ========================= */
@@ -238,9 +180,7 @@ createThumbnail($targetPath, $thumbPath, 800);
 $is360 = isPanorama360($targetPath);
 
 if (!$is360) {
-    if (convertFlatToPseudoPanorama($targetPath)) {
         $isFlat = true;
-    }
 }
 
 /* =========================

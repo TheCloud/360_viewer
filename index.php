@@ -4,21 +4,17 @@
 // Non esiste, prima installazione
 //
 //
-$configFile = APP_ROOT . '/config.php';
-$defaultConfig = APP_ROOT . '/config.default.php';
+$configFile = __DIR__ . '/config.php';
+$defaultConfig = __DIR__ . '/config.default.php';
 
+// Crea il file di configurazione e personalizza la hash per le cartelle
 if (!file_exists($configFile)) {
-
     $config = file_get_contents($defaultConfig);
-
     /* genera chiave sicura */
     $secret = bin2hex(random_bytes(32));
-
     /* sostituisce placeholder */
     $config = str_replace('LA_TUA_CHIAVE', $secret, $config);
-
     file_put_contents($configFile, $config);
-
 }
 
 require_once $configFile;
@@ -217,6 +213,10 @@ if ($startImage) {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
 <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <style>
 body { background:#111; color:#fff; }
 
@@ -432,6 +432,8 @@ if (!$dataOra) {
 <script>
 
 let viewer = null;
+let flatMap = null;
+
 let currentImageName = null;
 
 let imageHotspotsData = <?= json_encode($meta['hotspots'] ?? []) ?>;
@@ -468,69 +470,67 @@ function openViewer(imagePath, description, fileName) {
     const is360 = panoramaFlags[fileName] ?? false;
     const isFlat = flatFlags[fileName] ?? false;
 
-    // Immagini non flat e non 360! (cioè boh)
-    if (!is360 && !isFlat) {
-
+if (isFlat) {
+if (flatMap) {
+    flatMap.remove();
+    flatMap = null;
+}
     const container = document.getElementById('panorama');
+    container.innerHTML = "";
 
-    container.innerHTML =
-        '<div id="flatContainer" style="position:relative;width:100%;height:100%;">' +
-        '<img id="flatImage" src="' + imagePath + '" ' +
-        'style="width:100%;height:100%;object-fit:contain;">' +
-        '</div>';
-
-    const hs = imageHotspotsData?.[fileName] || [];
-
-    const img = document.getElementById("flatImage");
-    const wrap = document.getElementById("flatContainer");
+    const img = new Image();
 
     img.onload = function () {
 
-        hs.forEach(h => {
+        const width  = img.width;
+        const height = img.height;
 
-            const pitch = parseFloat(h.pitch);
-            const yaw   = parseFloat(h.yaw);
-
-            const pos = panoToFlat(pitch, yaw);
-
-            const dot = document.createElement("div");
-
-            if (h.type === 'link') {
-    dot.className = "link-hotspot";
-} else if (h.type === 'url') {
-    dot.className = "url-hotspot";
-    dot.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
-} else {
-    dot.className = "custom-hotspot";
-}
-
-            dot.style.position = "absolute";
-            dot.style.left = pos.x + "%";
-            dot.style.top  = pos.y + "%";
-
-            if (h.type === "link" && h.target) {
-
-    dot.onclick = function() {
-        loadScene(h.target);
-    };
-
-} else if (h.type === "url" && h.target) {
-
-    dot.onclick = function() {
-        window.open(h.target, "_blank");
-    };
-
-} else if (h.text) {
-
-    dot.title = h.text;
-
-}
-
-            wrap.appendChild(dot);
-
+        flatMap = L.map('panorama', {
+            crs: L.CRS.Simple,
+            minZoom: -2,
+            maxZoom: 2,
+            zoomSnap: 0.1
         });
 
+        const bounds = [[0,0],[height,width]];
+
+        L.imageOverlay(imagePath, bounds).addTo(flatMap);
+
+        flatMap.fitBounds(bounds);
+        flatMap.setMaxBounds(bounds);
+
+        const hs = imageHotspotsData?.[fileName] || [];
+
+hs.forEach(h => {
+
+    const x = parseFloat(h.x) * width;
+    const y = parseFloat(h.y) * height;
+
+    const icon = L.divIcon({
+        className: '',
+        html: '<div class="custom-hotspot"></div>',
+        iconSize: [18,18]
+    });
+
+    const marker = L.marker([y,x], {icon}).addTo(flatMap);
+
+    if (h.type === "link" && h.target) {
+        marker.on("click", () => loadScene(h.target));
+    }
+
+    if (h.type === "url" && h.target) {
+        marker.on("click", () => window.open(h.target,"_blank"));
+    }
+
+    if (h.text) {
+        marker.bindTooltip(h.text);
+    }
+
+});
+
     };
+
+    img.src = imagePath;
 
     return;
 }
@@ -587,20 +587,6 @@ let pannellumConfig = {
 
     })
 };
-
-// Per le immagine flat convertite a sferiche, usa parametri particolari
-if (isFlat) {
-
-    pannellumConfig.minPitch = 0;
-    pannellumConfig.maxPitch = 0;
-
-    pannellumConfig.minYaw = 0;
-    pannellumConfig.maxYaw = 0;
-
-    pannellumConfig.minHfov = 110;
-    pannellumConfig.maxHfov = 110;
-
-}
 
 viewer = pannellum.viewer('panorama', pannellumConfig);
 
@@ -683,14 +669,6 @@ function loadScene(targetFile) {
     history.replaceState(null, '', newUrl);
 }
 
-function panoToFlat(pitch, yaw) {
-
-    const x = (yaw + 180) / 360 * 100;
-    const y = (90 - pitch) / 180 * 100;
-
-    return { x, y };
-}
-
 function closeViewer() {
 
     document.getElementById('viewerOverlay').style.display = 'none';
@@ -699,6 +677,11 @@ function closeViewer() {
         viewer.destroy();
         viewer = null;
     }
+
+    if (flatMap) {
+    flatMap.remove();
+    flatMap = null;
+}
 
     document.getElementById('panorama').innerHTML = '';
 
