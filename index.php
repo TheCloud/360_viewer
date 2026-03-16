@@ -469,8 +469,7 @@ function openViewer(imagePath, description, fileName) {
 
     const is360 = panoramaFlags[fileName] ?? false;
     const isFlat = flatFlags[fileName] ?? false;
-
-if (isFlat) {
+if (isFlat || !is360) {
 if (flatMap) {
     flatMap.remove();
     flatMap = null;
