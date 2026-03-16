@@ -1,4 +1,12 @@
 <?php
+
+
+// Non esiste, prima installazione
+if (!file_exists(__DIR__ . '/config.php')){
+	copy(__DIR__.'/config.default.php',__DIR__ . '/config.php');
+	header("Location: /admin");
+	exit();
+}
 require_once __DIR__ . '/config.php';
 
 function generateToken($folder) {
