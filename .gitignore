@@ -5,3 +5,4 @@ config.php
 admin/debug.log
 admin/*.json
 .DS_Store
+index.html
