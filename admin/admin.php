@@ -253,6 +253,13 @@ body { background:#111; color:#fff; }
     $folderComment = '';
     $hasDescriptions = false;
     $decoded = [];
+
+    $token = generateToken($name);
+    $publicUrl = APP_SCHEME.'://' . $_SERVER['HTTP_HOST']
+               . APP_BASE_URL."/index.php?open=" . urlencode($name)
+               . "&token=" . $token;
+
+
     if ($hasMeta) {
         $raw = file_get_contents($metaFile);
         $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
@@ -288,14 +295,17 @@ if ($count > 0) {
 
 <div class="col-12 col-sm-6 col-lg-4">
     <div class="card text-white h-100">
-
         <?php if ($preview): ?>
-<div class="pano-admin-preview <?= $isPanorama ? 'is-pano' : '' ?>"
+<div onclick="window.open('<?=$publicUrl;?>')" class="pano-admin-preview <?= $isPanorama ? 'is-pano' : '' ?>"
      style="background-image:url('<?= $preview ?>')">
 
     <?php if ($isPanorama): ?>
         <div class="pano-overlay">
             <i class="bi bi-globe2"></i>
+        </div>
+    <?php else: ?>
+        <div class="pano-overlay">
+            <i class="bi bi-file-earmark-image"></i>
         </div>
     <?php endif; ?>
 
@@ -334,14 +344,6 @@ if ($count > 0) {
 
             <div class="mt-auto">
 <div class="mt-auto pt-3">
-
-    <?php
-    $token = generateToken($name);
-
-    $publicUrl = APP_SCHEME.'://' . $_SERVER['HTTP_HOST']
-               . APP_BASE_URL."/index.php?open=" . urlencode($name)
-               . "&token=" . $token;
-    ?>
 
     <!-- RIGA 1 : PUBBLICO -->
     <div class="d-flex flex-column flex-sm-row gap-2 mb-2">
