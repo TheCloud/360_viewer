@@ -257,7 +257,7 @@ body { background:#111; color:#fff; }
 }
 
 .leaflet-container {
-    background: #000 !important;
+    background: #111 !important;
 }
 
 #viewerOverlay {
