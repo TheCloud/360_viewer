@@ -353,8 +353,11 @@ if (!$dataOra) {
 
 </div>
     <?php if ($isPanorama): ?>
-        <div class="pano-badge"><i class="bi bi-globe"></i></div>
+        <div class="pano-badge"><i class="bi bi-globe2"></i></div>
+    <?php else:?>
+        <div class="pano-badge"><i class="bi bi-file-earmark-image"></i></div>
     <?php endif; ?>
+
 
 </div>
 
