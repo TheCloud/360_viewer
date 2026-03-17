@@ -256,6 +256,10 @@ body { background:#111; color:#fff; }
     border-radius:6px;
 }
 
+.leaflet-container {
+    background: #000 !important;
+}
+
 #viewerOverlay {
     position:fixed;
     inset:0;
@@ -275,13 +279,30 @@ body { background:#111; color:#fff; }
     z-index:10001;
 }
 
-#shareViewBtn {
+.toast-container {
+    z-index: 10002 !important;
+}
+.viewer-actions {
     position:absolute;
     top:20px;
-    left:30px;
+    right:30px;
+    display:flex;
+    gap:10px;
     z-index:10001;
 }
 
+.viewer-actions .btn {
+    width:40px;
+    height:40px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+}
+
+.viewer-actions i {
+    font-size:18px;
+}
 .viewer-caption {
     position:absolute;
     bottom:30px;
@@ -367,8 +388,21 @@ if (!$dataOra) {
 </div>
 
 <div id="viewerOverlay">
-<div class="closeBtn text-white" onclick="closeViewer()">✕</div>
-<button id="shareViewBtn" class="btn btn-sm btn-outline-light">🔗 Condividi vista</button>
+<div class="viewer-actions">
+
+    <button id="shareViewBtn"
+            class="btn btn-sm btn-outline-light"
+            title="Condividi vista">
+        <i class="bi bi-box-arrow-up"></i>
+    </button>
+
+    <button class="btn btn-sm btn-outline-light"
+            onclick="closeViewer()"
+            title="Chiudi">
+        <i class="bi bi-x-lg"></i>
+    </button>
+
+</div>
 <div id="panorama"></div>
 <div id="viewerCaption" class="viewer-caption" style="display:none;"></div>
 </div>
@@ -439,8 +473,12 @@ if (flatMap) {
 
         L.imageOverlay(imagePath, bounds).addTo(flatMap);
 
-        flatMap.fitBounds(bounds);
-        flatMap.setMaxBounds(bounds);
+        flatMap.fitBounds(bounds, {
+    padding: [0, 0]
+});
+
+flatMap.setMaxBounds(bounds);
+flatMap.setZoom(flatMap.getZoom() + 0.01);
 
         const hs = imageHotspotsData?.[fileName] || [];
 
@@ -557,41 +595,57 @@ viewer = pannellum.viewer('panorama', pannellumConfig);
     }
 }
 
-document.getElementById('shareViewBtn').addEventListener('click', function() {
+document.getElementById('shareViewBtn').addEventListener('click', function () {
 
-    if (!viewer || !currentImageName) return;
+    let pitch = 0;
+    let yaw   = 0;
+    let hfov  = 130;
 
-    const yaw   = viewer.getYaw().toFixed(2);
-    const pitch = viewer.getPitch().toFixed(2);
-    const hfov  = viewer.getHfov().toFixed(2);
-
-    const shareUrl =
-        window.location.origin +
-        window.location.pathname +
-        '?open=' + encodeURIComponent(autoOpenFolder) +
-        '&token=' + encodeURIComponent(autoToken) +
-        '&img=' + encodeURIComponent(currentImageName) +
-        '&yaw=' + yaw +
-        '&pitch=' + pitch +
-        '&hfov=' + hfov;
-
-    if (navigator.share) {
-        navigator.share({
-            title: 'Foto 360',
-            url: shareUrl
-        }).catch(()=>{});
-    } else {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(shareUrl).catch(()=>{});
-        } else {
-            const tmp = document.createElement('input');
-            tmp.value = shareUrl;
-            document.body.appendChild(tmp);
-            tmp.select();
-            document.execCommand('copy');
-            document.body.removeChild(tmp);
-        }
+    if (viewer) {
+        pitch = viewer.getPitch();
+        yaw   = viewer.getYaw();
+        hfov  = viewer.getHfov();
     }
+
+    if (flatMap) {
+        const center = flatMap.getCenter();
+
+        // normalizza come fai per salvare hotspot
+        const bounds = flatMap.getBounds();
+        const width  = bounds.getEast();
+        const height = bounds.getSouth();
+
+        yaw   = center.lng / width;
+        pitch = center.lat / height;
+        hfov  = flatMap.getZoom();
+    }
+
+    const url = new URL(window.location.href);
+
+    url.searchParams.set('pitch', parseFloat(pitch).toFixed(4));
+    url.searchParams.set('yaw', parseFloat(yaw).toFixed(4));
+    url.searchParams.set('hfov', parseFloat(hfov).toFixed(2));
+
+    const finalUrl = url.toString();
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(finalUrl)
+            .then(() => showToast())
+            .catch(() => fallbackCopy(finalUrl));
+    } else {
+        fallbackCopy(finalUrl);
+    }
+
+    function fallbackCopy(text) {
+        const input = document.createElement("input");
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+        showToast();
+    }
+
 });
 
 function loadScene(targetFile) {
@@ -649,7 +703,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 });
-</script>
 
+function showToast() {
+    const toastEl = document.getElementById('copyToast');
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+}
+
+</script>
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="copyToast" class="toast text-bg-dark border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body">
+        🔗 Link copiato
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
