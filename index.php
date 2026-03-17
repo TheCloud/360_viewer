@@ -452,8 +452,7 @@ hs.forEach(h => {
 
     const icon = L.divIcon({
         className: '',
-        html: '<div class="' + cssClass + '"></div>',
-        iconSize: [22,22]
+        html: '<div class="' + cssClass + '"></div>'
     });
 
     const marker = L.marker([y,x], {icon}).addTo(flatMap);

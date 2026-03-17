@@ -458,9 +458,7 @@ if (is360) {
 
             const icon = L.divIcon({
                 className: '',
-                html: '<div class="' + cssClass + '"></div>',
-                iconSize: [20,20],
-                iconAnchor: [10,10]
+                html: '<div class="' + cssClass + '"></div>'
             });
 
             const marker = L.marker([y, x], {icon}).addTo(flatMap);
@@ -502,9 +500,7 @@ if (is360) {
 
             const previewIcon = L.divIcon({
                 className: '',
-                html: '<div class="hotspot preview"></div>',
-                iconSize: [18,18],
-                iconAnchor: [9,9]
+                html: '<div class="hotspot preview"></div>'
             });
 
             previewId = L.marker([lat, lng], {icon: previewIcon}).addTo(flatMap);
