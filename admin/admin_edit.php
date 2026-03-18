@@ -342,33 +342,37 @@ body { background:#111; color:#fff; }
                        placeholder="Descrizione immagine">
             </div>
 
-            <div class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
+<div class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
 
-                <div class="form-check">
-                    <input class="form-check-input"
-                           type="radio"
-                           name="start_image"
-                           value="<?= sanitize($filename) ?>"
-                           <?= $isStart ? 'checked' : '' ?>>
-                    <label class="form-check-label small">
-                        ⭐ Immagine in evidenza
-                    </label>
-                </div>
+    <div class="form-check d-flex align-items-center gap-2">
+        <input class="form-check-input"
+               type="radio"
+               name="start_image"
+               value="<?= sanitize($filename) ?>"
+               <?= $isStart ? 'checked' : '' ?>>
 
-                <a class="btn btn-outline-primary btn-sm"
-                   href="admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=<?= urlencode($filename) ?>">
-                   🟢 Hotspot
-                </a>
+        <label class="form-check-label small d-flex align-items-center gap-1">
+            <i class="bi bi-star-fill text-warning"></i>
+            Immagine in evidenza
+        </label>
+    </div>
 
-                <button type="submit"
-                        name="delete_image"
-                        value="<?= htmlspecialchars($filename) ?>"
-                        class="btn btn-outline-danger btn-sm"
-                        onclick="return confirm('Eliminare questa foto?');">
-                    ❌ Elimina
-                </button>
+    <a class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+       href="admin_hotspots.php?folder=<?= urlencode($folderName) ?>&image=<?= urlencode($filename) ?>">
+        <i class="bi bi-geo-alt"></i>
+        Hotspot
+    </a>
 
-            </div>
+    <button type="submit"
+            name="delete_image"
+            value="<?= htmlspecialchars($filename) ?>"
+            class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1"
+            onclick="return confirm('Eliminare questa foto?');">
+        <i class="bi bi-trash"></i>
+        Elimina
+    </button>
+
+</div>
 
         </div>
 
