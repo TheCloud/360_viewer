@@ -331,7 +331,7 @@ body { background:#111; color:#fff; }
     $description   = $meta['images'][$startImage] ?? '';
     $isPanorama    = $meta['panoramas'][$startImage] ?? false;
 ?>
-<div class="text-center text-secondary mb-2">Immagine principale</div>
+    <div class="text-center text-secondary mb-2">Immagine in evidenza</div>
 <div class="d-flex justify-content-center mb-4">
     <div class="thumb-wrapper" style="width:400px;">
         <div class="thumb start-thumb"
