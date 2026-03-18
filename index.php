@@ -71,6 +71,7 @@ body {
     font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     text-align:center;
 }
+/* ===== Immagine principale ===== */
 
 .box {
     max-width:600px;
@@ -202,9 +203,6 @@ usort($images, function($a, $b) use ($meta,$order) {
 
     $ta = $da ? strtotime($da) : filemtime($a);
     $tb = $db ? strtotime($db) : filemtime($b);
-    if ($order === 'desc') {
-        return $tb <=> $ta;
-    }
     return $order === 'desc' ? ($tb <=> $ta) : ($ta <=> $tb);
 });
 
@@ -225,13 +223,11 @@ usort($images, function($a, $b) use ($meta,$order) {
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+
+
 <style>
 body { background:#111; color:#fff; }
 
-.start-thumb {
-    border: 3px solid #28a745 !important;
-    box-shadow: 0 0 12px rgba(40,167,69,0.6);
-}
 
 .thumb-wrapper {
     position: relative;
@@ -326,39 +322,37 @@ body { background:#111; color:#fff; }
 <?php if ($startImage):
 
     $startPath = $baseDir . '/' . $openFolder . '/' . $startImage;
-    $relativeImage = 'images/' . $openFolder . '/' . $startImage;
-    $relativeThumb = 'thumbnails/' . $openFolder . '/' . $startImage;
+$relativeImage = 'images/' . $openFolder . '/' . $startImage;
+$relativeThumb = file_exists($thumbBaseDir . '/' . $openFolder . '/' . $startImage)
+    ? 'thumbnails/' . $openFolder . '/' . $startImage
+    : 'images/' . $openFolder . '/' . $startImage;
+
     $description   = $meta['images'][$startImage] ?? '';
     $isPanorama    = $meta['panoramas'][$startImage] ?? false;
 ?>
-    <div class="text-center text-secondary mb-2">Immagine in evidenza</div>
-<div class="d-flex justify-content-center mb-4">
-    <div class="thumb-wrapper" style="width:400px;">
-        <div class="thumb start-thumb"
-             style="width:400px;height:200px;background-image:url('<?= $relativeThumb ?>')"
+<div class="start-wrapper">
+    <div class="start-card">
+        <div class="start-label">Immagine in evidenza</div>
+        <div class="start-thumb"
+             style="background-image:url('<?= $relativeThumb ?>')"
              onclick="openViewer(
                 '<?= $relativeImage ?>',
                 '<?= htmlspecialchars($description, ENT_QUOTES) ?>',
                 '<?= $startImage ?>'
              )">
-        </div>
-
-        <div class="text-center mt-2 small text-light">
-            <div style="font-weight:600;">
-                <?= htmlspecialchars($description) ?>
-            </div>
-        </div>
-
-        <?php if ($isPanorama): ?>
+                <?php if ($isPanorama): ?>
             <div class="pano-badge"><i class="bi bi-globe2"></i></div>
         <?php else: ?>
             <div class="pano-badge"><i class="bi bi-file-earmark-image"></i></div>
         <?php endif; ?>
 
+        </div>
+
+        <div class="start-title">
+            <?= htmlspecialchars($description) ?>
+        </div>
     </div>
-
 </div>
-
 <?php endif; ?>
 <div class="d-flex justify-content-end mb-3">
 

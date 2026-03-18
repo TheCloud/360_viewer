@@ -351,7 +351,7 @@ body { background:#111; color:#fff; }
                            value="<?= sanitize($filename) ?>"
                            <?= $isStart ? 'checked' : '' ?>>
                     <label class="form-check-label small">
-                        ⭐ Immagine iniziale
+                        ⭐ Immagine in evidenza
                     </label>
                 </div>
 
