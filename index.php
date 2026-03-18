@@ -35,10 +35,11 @@ $openImage  = $_GET['img'] ?? null;
 $startImage = null;
 $token      = $_GET['token'] ?? null;
 
+
 $yawParam   = $_GET['yaw'] ?? null;
 $pitchParam = $_GET['pitch'] ?? null;
 $hfovParam  = $_GET['hfov'] ?? null;
-
+$order      = $_GET['order'] ?? 'asc';
 /* =========================
    TOKEN CHECK
 ========================= */
@@ -181,6 +182,7 @@ exit;}
 ========================= */
 
 
+
 $metaFile = $folderPath . '/meta.json';
 $meta = loadMeta($folderPath);
 
@@ -190,19 +192,21 @@ if (!empty($meta['start_image']) &&
     $startImage = $meta['start_image'];
 }
 $images = glob($folderPath . '/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE);
-if ($startImage) {
+usort($images, function($a, $b) use ($meta,$order) {
 
-    usort($images, function($a, $b) use ($startImage) {
+    $fa = basename($a);
+    $fb = basename($b);
 
-        $fa = basename($a);
-        $fb = basename($b);
+    $da = $meta['images_meta'][$fa]['datetime'] ?? null;
+    $db = $meta['images_meta'][$fb]['datetime'] ?? null;
 
-        if ($fa === $startImage) return -1;
-        if ($fb === $startImage) return 1;
-
-        return 0;
-    });
-}
+    $ta = $da ? strtotime($da) : filemtime($a);
+    $tb = $db ? strtotime($db) : filemtime($b);
+    if ($order === 'desc') {
+        return $tb <=> $ta;
+    }
+    return $order === 'desc' ? ($tb <=> $ta) : ($ta <=> $tb);
+});
 
 ?>
 <!DOCTYPE html>
@@ -319,19 +323,74 @@ body { background:#111; color:#fff; }
 <div class="container py-4">
 <h1><?= htmlspecialchars($meta['folder_comment'] ?: $openFolder) ?></h1>
 
-<div class="d-flex flex-wrap gap-3">
+<?php if ($startImage):
 
-<?php foreach ($images as $img):
+    $startPath = $baseDir . '/' . $openFolder . '/' . $startImage;
+    $relativeImage = 'images/' . $openFolder . '/' . $startImage;
+    $relativeThumb = 'thumbnails/' . $openFolder . '/' . $startImage;
+    $description   = $meta['images'][$startImage] ?? '';
+    $isPanorama    = $meta['panoramas'][$startImage] ?? false;
+?>
+<div class="text-center text-secondary mb-2">Immagine principale</div>
+<div class="d-flex justify-content-center mb-4">
+    <div class="thumb-wrapper" style="width:400px;">
+        <div class="thumb start-thumb"
+             style="width:400px;height:200px;background-image:url('<?= $relativeThumb ?>')"
+             onclick="openViewer(
+                '<?= $relativeImage ?>',
+                '<?= htmlspecialchars($description, ENT_QUOTES) ?>',
+                '<?= $startImage ?>'
+             )">
+        </div>
 
+        <div class="text-center mt-2 small text-light">
+            <div style="font-weight:600;">
+                <?= htmlspecialchars($description) ?>
+            </div>
+        </div>
+
+        <?php if ($isPanorama): ?>
+            <div class="pano-badge"><i class="bi bi-globe2"></i></div>
+        <?php else: ?>
+            <div class="pano-badge"><i class="bi bi-file-earmark-image"></i></div>
+        <?php endif; ?>
+
+    </div>
+
+</div>
+
+<?php endif; ?>
+<div class="d-flex justify-content-end mb-3">
+
+    <div class="btn-group" role="group">
+
+        <a href="?open=<?= urlencode($openFolder) ?>&token=<?= urlencode($token) ?>&order=asc"
+           class="btn btn-sm btn-outline-light <?= $order === 'asc' ? 'active' : '' ?>"
+           title="Ordine crescente">
+            <i class="bi bi-sort-up"></i>
+        </a>
+
+        <a href="?open=<?= urlencode($openFolder) ?>&token=<?= urlencode($token) ?>&order=desc"
+           class="btn btn-sm btn-outline-light <?= $order === 'desc' ? 'active' : '' ?>"
+           title="Ordine decrescente">
+            <i class="bi bi-sort-down"></i>
+        </a>
+
+    </div>
+
+</div><div class="d-flex flex-wrap gap-3">
+<?php $lastDate = null; 
+$startImageFile = $startImage;
+foreach ($images as $img):
     $filename = basename($img);
+    if ($startImageFile && $filename === $startImageFile) continue;
+
     $relativeImage = 'images/' . $openFolder . '/' . $filename;
     $relativeThumb = 'thumbnails/' . $openFolder . '/' . $filename;
     $description   = $meta['images'][$filename] ?? '';
     $isPanorama    = $meta['panoramas'][$filename] ?? false;
     $isStart = ($filename === $startImage);
-    $dataOra = null;
-
-    $dataOra = null;
+$timestamp = null;
 
 if (!empty($meta['images_meta'][$filename]['datetime'])) {
 
@@ -341,15 +400,26 @@ if (!empty($meta['images_meta'][$filename]['datetime'])) {
     );
 
     if ($dt) {
-        $dataOra = $dt->format('d/m/Y H:i');
+        $timestamp = $dt->getTimestamp();
     }
 }
 
-if (!$dataOra) {
-    $dataOra = date('d/m/Y H:i', filemtime($img));
+if (!$timestamp) {
+    $timestamp = filemtime($img);
 }
 
+$dataOra = date('d/m/Y H:i', $timestamp);
+$currentDate = date('d-m-Y', $timestamp);
+if ($currentDate !== $lastDate) {
 
+    echo '<div class="w-100 mt-4 mb-2">';
+    echo '<div class="text-center text-secondary" style="border-top:1px solid #444; padding-top:10px;">';
+    echo date('d/m/Y', strtotime($currentDate));
+    echo '</div>';
+    echo '</div>';
+
+    $lastDate = $currentDate;
+}
 ?>
 
 <div class="thumb-wrapper">
