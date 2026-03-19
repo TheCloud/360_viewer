@@ -46,30 +46,25 @@ $order      = $_GET['order'] ?? 'asc';
 require_once __DIR__ . '/auth.php';
 session_start();
 
-
-
-
 $accessGranted = false;
 
 if (usersExist()) {
 
+    // 🔵 caso: utente loggato
     if (isLogged()) {
+
         if (!$openFolder) {
+            header("Location: albums.php");
+            exit;
+        }
 
-    if (usersExist() && isLogged()) {
-        header("Location: albums.php");
-        exit;
-    }
-
-    // fallback attuale (403)
-}
         if (canAccess($openFolder)) {
             $accessGranted = true;
         }
 
     } else {
 
-        // se c'è token valido → ok
+        // 🔵 caso: accesso via token (pubblico)
         if ($openFolder && isValidToken($openFolder, $token)) {
             $accessGranted = true;
         } else {
@@ -77,7 +72,7 @@ if (usersExist()) {
                 include(__DIR__."/index.html");
                 exit;
             } else {
-                $redirect = trim(urlencode($_SERVER['REQUEST_URI']));
+                $redirect = urlencode($_SERVER['REQUEST_URI']);
                 header("Location: login.php?redirect=$redirect");
                 exit;
             }
@@ -89,7 +84,6 @@ if (usersExist()) {
     // legacy
     if ($openFolder && isValidToken($openFolder, $token)) {
         $accessGranted = true;
-        exit("OK");
     }
 }
 
