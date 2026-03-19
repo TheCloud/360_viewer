@@ -46,8 +46,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         header("Location: admin.php");
         exit;
     }
-
-    $error = true;
+    $error = "Username o Password errati.";
 }
 ?>
 <!DOCTYPE html>
@@ -62,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 
 <div class="card bg-secondary p-4" style="max-width:400px">
 
-<h4 class="mb-3">Login</h4>
+<h4 class="mb-3">Login Admin</h4>
 
 <?php if ($error): ?>
 <div class="alert alert-danger">
