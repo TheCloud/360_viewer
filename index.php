@@ -43,9 +43,59 @@ $order      = $_GET['order'] ?? 'asc';
 /* =========================
    TOKEN CHECK
 ========================= */
+require_once __DIR__ . '/auth.php';
+session_start();
 
-if (!$openFolder || !isValidToken($openFolder, $token)) {
-http_response_code(403);
+
+
+
+$accessGranted = false;
+
+if (usersExist()) {
+
+    if (isLogged()) {
+        if (!$openFolder) {
+
+    if (usersExist() && isLogged()) {
+        header("Location: albums.php");
+        exit;
+    }
+
+    // fallback attuale (403)
+}
+        if (canAccess($openFolder)) {
+            $accessGranted = true;
+        }
+
+    } else {
+
+        // se c'è token valido → ok
+        if ($openFolder && isValidToken($openFolder, $token)) {
+            $accessGranted = true;
+        } else {
+            if (file_exists(__DIR__."/index.html")) {
+                include(__DIR__."/index.html");
+                exit;
+            } else {
+                $redirect = trim(urlencode($_SERVER['REQUEST_URI']));
+                header("Location: login.php?redirect=$redirect");
+                exit;
+            }
+        }
+    }
+
+} else {
+
+    // legacy
+    if ($openFolder && isValidToken($openFolder, $token)) {
+        $accessGranted = true;
+        exit("OK");
+    }
+}
+
+if (!$accessGranted) {
+    http_response_code(403);
+
 ?>
 <!DOCTYPE html>
 <html lang="it">

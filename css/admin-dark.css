@@ -1,0 +1,104 @@
+/* ===== BASE ===== */
+
+body {
+    background: #111;
+    color: #fff;
+}
+
+/* ===== CARD ===== */
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #fff;
+}
+
+/* forza testo chiaro dentro le card */
+.card * {
+    color: inherit;
+}
+
+/* ===== FORM ===== */
+
+.form-control {
+    background: #222;
+    border: 1px solid #444;
+    color: #fff;
+}
+
+.form-control:focus {
+    background: #222;
+    color: #fff;
+    border-color: #666;
+    box-shadow: none;
+}
+
+/* ===== CHECKBOX ===== */
+
+input[type="checkbox"] {
+    accent-color: #0d6efd;
+}
+
+/* ===== TABLE ===== */
+
+.table {
+    color: #fff;
+}
+
+.table th,
+.table td {
+    color: #fff;
+    border-color: #333;
+}
+
+/* ===== BOTTONI (solo piccoli fix) ===== */
+
+.btn-outline-light {
+    border-color: #555;
+}
+
+.btn-outline-light:hover {
+    background: #fff;
+    color: #000;
+}
+
+/* ===== LABEL & TEXT ===== */
+
+.form-label,
+.form-check-label,
+label,
+small {
+    color: #ddd;
+}
+
+/* ===== ALBUM BOX ===== */
+
+.album-box {
+    display: inline-block;
+    margin: 4px;
+    padding: 4px 8px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #222;
+}
+
+.album-box:hover {
+    border-color: #0d6efd;
+}
+
+/* ===== HEADINGS ===== */
+
+h1, h2, h3, h4, h5 {
+    color: #fff;
+}
+
+/* ===== LINKS ===== */
+
+a {
+    color: #9ecbff;
+}
+
+a:hover {
+    color: #cfe2ff;
+}

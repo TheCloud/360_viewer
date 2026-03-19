@@ -202,6 +202,10 @@ body { background:#111; color:#fff; }
     <div class="d-flex gap-2">
 
         <a href="admin_users.php" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-people me-1"></i> Amministratori
+        </a>
+
+        <a href="admin_viewer_users.php" class="btn btn-outline-light btn-sm">
             <i class="bi bi-people me-1"></i> Utenti
         </a>
 

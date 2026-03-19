@@ -67,7 +67,6 @@ body {
 <div class="d-flex justify-content-between mb-4">
 
 <h3>Utenti Admin</h3>
-
 <div>
 
 <a href="admin.php" class="btn btn-outline-light btn-sm">
@@ -81,6 +80,7 @@ Logout
 </div>
 
 </div>
+<p>Possono aggiungere album, cancellarli, modificarli, gestire utenti e amministratori.</p>
 
 <div class="row g-4">
 
