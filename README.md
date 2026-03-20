@@ -1,4 +1,4 @@
-# 360 Viewer -- linkas.it/360
+# 360 Viewer
 
 Viewer web per foto sferiche equirettangolari (Insta360) e flat con:
 
